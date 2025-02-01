@@ -24,8 +24,8 @@ def create_app(config_class=Config):
             if app.config['TEST_DATA'] == "True":
                 from app.models.test.test_data import test_slot_generator
                 app.logger.info("Testing slot generator")
-                test_slot_generator()           
-    
+                test_slot_generator()
+                
     # Register the blueprints
     from app.main import bp as main_bp
     app.register_blueprint(main_bp)

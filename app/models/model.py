@@ -5,6 +5,7 @@ from app.extensions import db
 from sqlalchemy_schemadisplay import create_schema_graph
 from sqlalchemy import MetaData
 
+
 class Account(db.Model):
     __tablename__ = "account"
 
