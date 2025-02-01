@@ -123,13 +123,14 @@ def generate_available_slots(availabilities, datetime_from_filter = None, dateti
 
                     # aggiungi lo slot all'array
                     #availabilities_slots.append(slot)
+
                     if availability_date.isoformat() in availabilities_slots_dategroup:
                         availabilities_slots_dategroup[availability_date.isoformat()].append(slot)
                     else:
                         availabilities_slots_dategroup[availability_date.isoformat()] = [slot]
-
                 #passa allo slot successivo
                 availability_slot_start = add_minutes_to_time(availability_slot_end, availability.pause_minutes)
+                
             # passa alla settimana successiva
             availability_date += timedelta(days=7)
 

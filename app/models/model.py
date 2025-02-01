@@ -127,14 +127,14 @@ class Appointment(db.Model):
     __tablename__ = "appointment"
 
     appointment_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
-    account_id = db.Column(UUID(as_uuid=True), db.ForeignKey("account.account_id"), nullable=True)
-    patient_id = db.Column(UUID(as_uuid=True), db.ForeignKey("patient.patient_id"), nullable=True)
+    account_id = db.Column(UUID(as_uuid=True), db.ForeignKey("account.account_id"), nullable=False)
+    patient_id = db.Column(UUID(as_uuid=True), db.ForeignKey("patient.patient_id"), nullable=False)
     availability_id = db.Column( UUID(as_uuid=True), db.ForeignKey("availability.availability_id"), nullable=False)
     appointment_date = db.Column(db.Date, nullable=False)
     appointment_time_start = db.Column(db.Time, nullable=False)
     appointment_time_end = db.Column(db.Time, nullable=False)
     info = db.Column(db.String, nullable=True)
-    rejected = db.Column(db.Boolean, default=False)
+    rejected = db.Column(db.Boolean, default=False , nullable=False)
 
     # Relationships
     availability = db.relationship("Availability", back_populates="appointment")

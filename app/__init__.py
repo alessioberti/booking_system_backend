@@ -16,16 +16,15 @@ def create_app(config_class=Config):
         db.create_all()
         app.logger.info("Database created")
         if app.config['DEMO_DATA'] == "True":
-            from app.models.test.test_data import clear_existing_data, insert_demo_data
+            from app.models.test.test_data import insert_demo_data
             app.logger.info("Inserting demo data")
-            clear_existing_data()
+            db.drop_all()
+            db.create_all()
             insert_demo_data()
             if app.config['TEST_DATA'] == "True":
                 from app.models.test.test_data import test_slot_generator
                 app.logger.info("Testing slot generator")
-                clear_existing_data()
-                insert_demo_data()
-                test_slot_generator()
+                test_slot_generator()           
     
     # Register the blueprints
     from app.main import bp as main_bp
