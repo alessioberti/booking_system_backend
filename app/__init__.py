@@ -2,7 +2,7 @@ from flask import Flask
 from app.config import Config
 from app.extensions import db
 import logging
-from app.models.model import Account, Patient, Laboratory, ExamType, Operator, Availability, Appointment
+from app.models.model import *
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,8 +18,8 @@ def create_app(config_class=Config):
         logging.info("Database created")
         if app.config['DEMO_MODE']:
             from app.models.demo_data import clear_existing_data, insert_demo_data
-            #clear_existing_data()
-            #insert_demo_data()
+            clear_existing_data()
+            insert_demo_data()
     
     # Register the blueprints
     from app.main import bp as main_bp

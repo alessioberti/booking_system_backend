@@ -23,24 +23,23 @@ class Account(db.Model):
     patient = db.relationship("Patient", back_populates="account")
     appointment = db.relationship("Appointment", back_populates="account")
 
-
 class Patient(db.Model):
     __tablename__ = "patient"
 
     patient_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
     account_id = db.Column(UUID(as_uuid=True), db.ForeignKey("account.account_id"), nullable=False)
-    is_default_patient = db.Column(db.Boolean, default=True, nullable=False)
+    is_default = db.Column(db.Boolean, default=True, nullable=False)
     first_name = db.Column(db.String(30), nullable=False)
     last_name = db.Column(db.String(30), nullable=False)
     email = db.Column(db.String(254), nullable=False)
     tel_number = db.Column(db.String(30), nullable=False)
     fiscal_code = db.Column(db.String(30), nullable=False)
     birth_date = db.Column(db.Date, nullable=False)
+    anonimized = db.Column(db.Boolean, default=False, nullable=False)
 
     # Relationships
     account = db.relationship("Account", back_populates="patient")
     appointment = db.relationship("Appointment", back_populates="patient")
-
 
 class Laboratory(db.Model):
     __tablename__ = "laboratories"
@@ -48,11 +47,11 @@ class Laboratory(db.Model):
     laboratory_id = db.Column( UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     address = db.Column(db.String(255), nullable=True)
-    contact_info = db.Column(db.String(255), nullable=True)
+    tel_number = db.Column(db.String(255), nullable=True)
 
     # Relationships
     availability = db.relationship("Availability", back_populates="laboratory")
-
+    laboratory_closure = db.relationship("LaboratoryClosure", back_populates="laboratory")
 
 class LaboratoryClosure(db.Model):
     __tablename__ = "laboratory_closures"
@@ -62,6 +61,9 @@ class LaboratoryClosure(db.Model):
     start_datetime = db.Column(db.DateTime, nullable=False)
     end_datetime = db.Column(db.DateTime, nullable=False)
 
+    # Relationships
+
+    laboratory = db.relationship("Laboratory", back_populates="laboratory_closure")
 
 class ExamType(db.Model):
     __tablename__ = "exam_types"
@@ -73,19 +75,19 @@ class ExamType(db.Model):
      # Relationships
     availability = db.relationship("Availability", back_populates="exam_type")
 
-
 class Operator(db.Model):
     __tablename__ = "operators"
 
     operator_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
-    name = db.Column(db.String(255), nullable=False)
-    account_id = db.Column(UUID(as_uuid=True), db.ForeignKey("account.account_id"), nullable=False)
-    
+    account_id = db.Column(UUID(as_uuid=True), db.ForeignKey("account.account_id"), unique=True, nullable=False)
+    title = db.Column(db.String(255), nullable=False)
+    first_name = db.Column(db.String(255), nullable=False)
+    last_name = db.Column(db.String(255), nullable=False)
+
      # Relationships
     account = db.relationship("Account", back_populates="operator")
     availability = db.relationship("Availability", back_populates="operator")
     operator_absences = db.relationship("OperatorAbsence", back_populates="operator")
-
 
 class OperatorAbsence(db.Model):
     __tablename__ = "operator_absences"
@@ -131,6 +133,7 @@ class Appointment(db.Model):
     appointment_date = db.Column(db.Date, nullable=False)
     appointment_time_start = db.Column(db.Time, nullable=False)
     appointment_time_end = db.Column(db.Time, nullable=False)
+    info = db.Column(db.String, nullable=True)
     rejected = db.Column(db.Boolean, default=False)
 
     # Relationships
