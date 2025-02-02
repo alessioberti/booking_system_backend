@@ -1,5 +1,4 @@
 from flask import Blueprint
 
 bp = Blueprint('routes', __name__)
-
-from app.routes import exam_availability
+from app.routes import api_exam_type, api_appointment

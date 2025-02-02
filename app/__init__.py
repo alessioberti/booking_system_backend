@@ -3,6 +3,7 @@ from app.config import Config
 from app.extensions import db
 from app.models.model import *
 from flask import jsonify
+from contextlib import contextmanager
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -12,6 +13,23 @@ def create_app(config_class=Config):
     # Inizializzazione delle teabelle e test dati
     db.init_app(app)
 
+    # Funzione per gestire le transazioni
+    @contextmanager
+    def transaction():
+        try:
+            yield
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Transaction error: {e}")
+            raise
+        finally:
+            db.session.close()
+
+    # Registrazione della funzione transaction come metodo dell'applicazione
+    app.transaction = transaction
+
+    # Creazione del database e inserimento dei dati di test in base alla configurazione
     with app.app_context():
         db.create_all()
         app.logger.info("Database created")

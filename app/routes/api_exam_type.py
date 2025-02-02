@@ -1,11 +1,9 @@
-from flask import Blueprint
 from app.models.model import Appointment, Availability, ExamType, OperatorAbsence, LaboratoryClosure, Operator, Laboratory
 from flask import jsonify
 from app.models.generate_available_slots import generate_available_slots
 from datetime import datetime, time, timedelta
 from flask import request
 from uuid import UUID
-from sqlalchemy.orm import joinedload
 from app.routes import bp
 from flask import current_app
 
@@ -22,10 +20,27 @@ def first_day_of_prev_month(dt: datetime) -> datetime:
 
 @bp.route('/api/v1/exam_type', methods=['GET'])
 def get_exam_types():
-    exam_types = ExamType.query.join(Availability).options(joinedload(ExamType.availability)).filter(Availability.enabled == True).all()
-    return jsonify([exam_type.to_dict() for exam_type in exam_types])
+    
+    page = request.args.get('page', 1, type=int) if request.args.get('page') else 1
+    per_page = request.args.get('per_page', 10, type=int) if request.args.get('per_page') else 10
+    
+    exam_types_query= ExamType.query.join(Availability).filter(Availability.enabled == True).paginate(page=page, per_page=per_page, error_out=True)
 
-@bp.route('/api/v1/exam_type/<exam_type_id>/availability', methods=['GET'])
+    return jsonify({
+        "page": exam_types_query.page,
+        "total": exam_types_query.total,
+        "pages": exam_types_query.pages,
+        "data": [exam_type.to_dict() for exam_type in exam_types_query.items]
+    })
+
+@bp.route('/api/v1/exam_type/<exam_type_id>', methods=['GET'])
+def get_exam_type(exam_type_id):
+    exam_type = ExamType.query.get(UUID(exam_type_id))
+    if exam_type:
+        return jsonify(exam_type.to_dict())
+    return jsonify({"error": "Exam type not found"}), 404
+
+@bp.route('/api/v1/exam_type/<exam_type_id>/available_slots', methods=['GET'])
 def get_exam_type_availabilities(exam_type_id):
 
     # imposto i limiti per la data di prenotazione e la data di fine prenotazione 
@@ -200,3 +215,6 @@ def get_exam_type_availabilities(exam_type_id):
                 "prev_cursor_datetime": prev_cursor_datetime,
                 #"initial_datetime_from_filter": initial_datetime_from_filter.isoformat()
             }), 200
+
+#bp.route('/api/v1/exam_type, methods=['POST'])
+# NOTA: la creazione di un nuovo tipo di esame non è prevista in questa versione dell'applicazione
