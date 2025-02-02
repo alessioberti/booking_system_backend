@@ -54,6 +54,21 @@ class Laboratory(db.Model):
     availability = db.relationship("Availability", back_populates="laboratory")
     laboratory_closure = db.relationship("LaboratoryClosure", back_populates="laboratory")
 
+    # Funzioni per la rappresentazione a stringa
+
+    def to_dict(self):
+        return {
+            "laboratory_id": self.laboratory_id,
+            "name": self.name,
+        }
+    def to_dict_with_info(self):
+        return {
+            "laboratory_id": self.laboratory_id,
+            "name": self.name,
+            "address": self.address,
+            "tel_number": self.tel_number
+        }
+
 class LaboratoryClosure(db.Model):
     __tablename__ = "laboratory_closures"
 
@@ -76,6 +91,14 @@ class ExamType(db.Model):
      # Relationships
     availability = db.relationship("Availability", back_populates="exam_type")
 
+    # Funzioni per la rappresentazione a stringa
+    def to_dict(self):
+        return {
+            "exam_type_id": self.exam_type_id,
+            "name": self.name,
+            "description": self.description
+        }
+
 class Operator(db.Model):
     __tablename__ = "operators"
 
@@ -89,6 +112,13 @@ class Operator(db.Model):
     account = db.relationship("Account", back_populates="operator")
     availability = db.relationship("Availability", back_populates="operator")
     operator_absences = db.relationship("OperatorAbsence", back_populates="operator")
+
+    # Funzioni per la rappresentazione a stringa
+    def to_dict(self):
+        return {
+            "operator_id": self.operator_id,
+            "name": f"{self.title} {self.first_name} {self.last_name}",
+        }
 
 class OperatorAbsence(db.Model):
     __tablename__ = "operator_absences"

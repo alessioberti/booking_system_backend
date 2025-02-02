@@ -14,29 +14,12 @@ import uuid
 import random
 from app.models.model import db, Account, Patient, Laboratory, LaboratoryClosure, ExamType, Operator, OperatorAbsence, Availability, Appointment
 
-def insert_demo_data(
-        numberof_patients=20, 
-        numberof_laboratories=10, 
-        numberof_exam_types=10, 
-        numberof_operators=5, 
-        numberof_availabilities=20, 
-        numberof_lab_closures=15,
-        numberof_operator_absences=15, 
-        numberof_appointments=50):
-    
-    CURRENT_YEAR = 2025
+def insert_patients_operators(numberof_patients=1, numberof_operators=1):
 
     FIRST_NAME_LIST = ["Alessio","Davide","Mauro","Roberto","Maurizio","Giovanni","Giovanna","Milena","Antonio","Alessia","Mirko","Maura","Roberta","Fabio","Giuseppe","Federica"]
     LAST_NAME_LIST = ["Arancioni","Verdi","Azzurri","Rosa","Celesti","Verdi","Blu","Bianchi","Neri","Gialli","Arancioni","Viola","Marroni","Neri","Gialli","Rossi"]
-    LOCATION_LIST = ["L'Acquila","Chieti","Pescara","Catanzaro","Firenze","Teramo","Bari","Palermo","Genova","Catania","Brescia","Cosenza","Taranto","Prato","Modena"]
-    EXAM_NAME_LIST = ["Visita Oculistica", "Visita Otorinolaringoiatrica", "Visita Cardiologica", "Visita Dermatologica", "Visita Ginecologica", "Visita Ortopedica", "Visita Pediatria", "Visita Psicologica", "Visita Urologica", "Visita Neurologica", "Visita Endocrinologica"]
-    SLOT_DURATION_LIST = [15, 30, 45, 60]
-    PAUSE_DURATION_LIST = [0, 5, 10, 15]
-    AVAILABILITY_START_LIST = [time(8, 0), time(9, 0), time(10, 0), time(11, 0)]
 
-    # create array to check unique emails
     already_created_emails = []
-    already_booked_slots = []
 
     for i in range(numberof_patients):
 
@@ -127,6 +110,10 @@ def insert_demo_data(
             db.session.rollback()
             continue
 
+def insert_laboratories(numberof_laboratories=1):
+
+    LOCATION_LIST = ["L'Acquila","Chieti","Pescara","Catanzaro","Firenze","Teramo","Bari","Palermo","Genova","Catania","Brescia","Cosenza","Taranto","Prato","Modena"]
+
     for i in range(numberof_laboratories):
         
         try:
@@ -144,39 +131,43 @@ def insert_demo_data(
             db.session.rollback()
             continue
 
-    for i in range(numberof_exam_types):
+def insert_exam_types(numberof_exam_types=1):
+
+    EXAM_NAME_LIST = ["Visita Oculistica", "Visita Otorinolaringoiatrica", "Visita Cardiologica", "Visita Dermatologica", "Visita Ginecologica", "Visita Ortopedica", "Visita Pediatria", "Visita Psicologica", "Visita Urologica", "Visita Neurologica", "Visita Endocrinologica"]
+    
+    while len(ExamType.query.all()) < numberof_exam_types:
+        
+        if len(ExamType.query.all()) == len(EXAM_NAME_LIST):
+            break
+
+        for exam_mame in EXAM_NAME_LIST:
+            try:
+                exam_type = ExamType(
+                    exam_type_id=uuid.uuid4(),
+                    name = exam_mame,
+                    description="Descrizione esame " + exam_mame
+                )
+                db.session.add(exam_type)
+                db.session.commit()
+            except Exception as e:
+                current_app.logger.error("Error inserting exam type: %s", e)
+                db.session.rollback()
+                continue
+
+def insert_availabilities(numberof_availabilities=1):
+
+    AVAILABILITY_DATETTIME_START = datetime.today()
+
+    SLOT_DURATION_LIST = [15, 30, 45, 60]
+    PAUSE_DURATION_LIST = [0, 5, 10, 15]
+    AVAILABILITY_START_LIST = [time(8, 0), time(9, 0), time(10, 0), time(11, 0)]
+    
+    while len(Availability.query.all()) < numberof_availabilities:
         
         try:
-            exam_mame = ""
-            for j in range(len(EXAM_NAME_LIST)):
-            
-                exam_mame = random.choice(EXAM_NAME_LIST)
-                if exam_mame not in [exam_type.name for exam_type in ExamType.query.all()]:
-                    break
-            if exam_mame == "":
-                current_app.logger.warning("Cannot generate unique exam name skipping.")
-                continue
-            
-            exam_type = ExamType(
-                exam_type_id=uuid.uuid4(),
-                name = exam_mame,
-                description="Description"
-            )
-            db.session.add(exam_type)
-            db.session.commit()
-        except Exception as e:
-            current_app.logger.error("Error inserting exam type: %s", e)
-            db.session.rollback()
-            continue
-
-    for i in range(numberof_availabilities):
-
-
-        try:
-
             # crea una disponibilità casuale
-            available_from_date=(generate_random_datetime(date(CURRENT_YEAR, 1, 1), date(CURRENT_YEAR, 12, 31))).date()
-            available_to_date=(available_from_date + timedelta(days=30 * random.randint(1, 6)))
+            available_from_date= AVAILABILITY_DATETTIME_START
+            available_to_date=(available_from_date + timedelta(days=30 * random.randint(3, 6)))
             available_from_time=random.choice(AVAILABILITY_START_LIST)
             available_to_time = (datetime.combine(available_from_date, available_from_time) + timedelta(hours=random.randint(4, 10))).time()
             
@@ -204,10 +195,18 @@ def insert_demo_data(
             db.session.rollback()
             continue
 
-    for i in range(numberof_lab_closures):
+def insert_lab_closures(numberof_lab_closures=1):
+    
+    try:
+        availabilites = Availability.query.all()
+    except Exception as e:  
+        current_app.logger.error("Error retrieving availabilities: %s", e)
+        return
+    
+    while len(LaboratoryClosure.query.all()) < numberof_lab_closures:
 
         try:
-            availability = random.choice(Availability.query.all())
+            availability = random.choice(availabilites)
 
             start_datetime=generate_random_datetime(availability.available_from_date, availability.available_to_date)
             end_datetime=generate_random_datetime(start_datetime.date(), availability.available_to_date)
@@ -225,10 +224,18 @@ def insert_demo_data(
             db.session.rollback()
             continue
 
+def insert_operator_absences(numberof_operator_absences=1):
+
+    try:
+        availabilities = Availability.query.all()
+    except Exception as e:
+        current_app.logger.error("Error retrieving availabilities: %s", e)
+        return
+    
     for i in range(numberof_operator_absences):
 
         try:
-            availability = random.choice(Availability.query.all())
+            availability = random.choice(availabilities)
 
             start_datetime=generate_random_datetime(availability.available_from_date, availability.available_to_date)
             end_datetime=generate_random_datetime(start_datetime.date(), availability.available_to_date)
@@ -245,65 +252,71 @@ def insert_demo_data(
             current_app.logger.error("Error inserting operator absence: %s", e)
             db.session.rollback()
             continue
+    
+def insert_appointments(numberof_appointments=1):
+    
+    current_app.logger.info("Inserting appointments")
 
-    for i in range(numberof_appointments):
+    try:
+        availabilies = Availability.query.all()
+    except Exception as e:
+        current_app.logger.error("Error retrieving availabilities: %s", e)
+        return
+    empty_availabilities = []
+
+    # cicla fino al numero di appuntamenti richiesti o fino a quando non ci sono più disponibilità
+    while len(Appointment.query.all()) < numberof_appointments and len(empty_availabilities) < len(availabilies):
         
-        try:
-            # simula utenti che prenotano appuntamenti
+        availabilies_with_slots = [availability for availability in availabilies if availability.availability_id not in empty_availabilities]
+        for j in range(len(availabilies_with_slots)):
 
-            # recupera una disponibilità casuale
-            availability = random.choice(Availability.query.all())
+            try:
+                # seleziona una disponibilità e filtra appuntamenti, chiusure del laboratorio e assenze dell'operatore
+                availability = availabilies_with_slots[j]
+                laboratory_closures = LaboratoryClosure.query.filter_by(laboratory_id=availability.laboratory_id).all()
+                operator_absences = OperatorAbsence.query.filter_by(operator_id=availability.operator_id).all()
+                appointments = Appointment.query.filter_by(availability_id=availability.availability_id).all()
 
-            # recupera tutte le chiusure del laboratorio e le assenze dell'operatore per quella disponibilità
-            laboratory_closures = LaboratoryClosure.query.filter_by(laboratory_id=availability.laboratory_id).all()
-            operator_absences = OperatorAbsence.query.filter_by(operator_id=availability.operator_id).all()
-            appointments = (Appointment.query.filter_by(availability_id=availability.availability_id).all())
+                datetime_from_filter = datetime.combine(availability.available_from_date, time(0, 0))
+                date_to_filter = datetime.combine(availability.available_to_date, time(23, 59))
+                groupd_slots = generate_available_slots([availability],datetime_from_filter,date_to_filter,laboratory_closures,operator_absences,appointments)
 
-            slots = []
-            
-            # cerca uno slot disponibile in una data casuale per un numero di volte proporzionale ai giorni di disponibilità
-            for j in range((availability.available_to_date - availability.available_from_date).days + 1 * 10):
-
-                appointment_date = generate_random_datetime(availability.available_from_date, availability.available_to_date).date()
-                datetime_from_filter = datetime.combine(appointment_date, time(0, 0))
-                datetime_to_filter = datetime.combine(appointment_date, time(23, 59))
-
-                grouped_slots = generate_available_slots([availability], datetime_from_filter, datetime_to_filter, laboratory_closures, operator_absences, appointments)
-                
-                if appointment_date.isoformat() in grouped_slots:
-                    slots = grouped_slots[appointment_date.isoformat()]
-                    break
-                else: 
-                    #current_app.logger.debug("No slots present in date %s", appointment_date.isoformat())
+                if not groupd_slots:
+                    empty_availabilities.append(availability.availability_id)
                     continue
 
-            if not slots:
-                current_app.logger.warning("Cannot generate slot for availability id %s skipping", availability.availability_id)
-                continue
-            
-            slot = random.choice(slots)
+                appointment_date = random.choice(list(groupd_slots.keys()))
+                if len(groupd_slots[appointment_date]) == 0:
+                    continue 
 
-            patient_id=random.choice([patient.patient_id for patient in Patient.query.all()])
-            account_id=Patient.query.get(patient_id).account_id
-            appointment = Appointment(
-                appointment_id=uuid.uuid4(),
-                availability_id=slot["availability_id"],
-                appointment_date=appointment_date,
-                appointment_time_start=datetime.strptime(slot["availability_slot_start"], "%H:%M").time(),
-                appointment_time_end=datetime.strptime(slot["availability_slot_end"], "%H:%M").time(),
-                account_id=account_id,
-                patient_id=patient_id
+                slot = random.choice(groupd_slots[appointment_date])
+
+                total_slot_count = sum(len(groupd_slots[d]) for d in groupd_slots)
+                total_appointment_count = len(appointments)
+                current_app.logger.debug("Generated %i appointments, %i remaining", total_appointment_count, total_slot_count)
+
+                patient_id = random.choice([patient.patient_id for patient in Patient.query.all()])
+                account_id = Patient.query.get(patient_id).account_id
+
+                appointment = Appointment(
+                    appointment_id=uuid.uuid4(),
+                    availability_id=slot["availability_id"],
+                    appointment_date=appointment_date,
+                    appointment_time_start=datetime.strptime(slot["availability_slot_start"], "%H:%M").time(),
+                    appointment_time_end=datetime.strptime(slot["availability_slot_end"], "%H:%M").time(),
+                    account_id=account_id,
+                    patient_id=patient_id
                 )
-            db.session.add(appointment)
-            db.session.commit()
-        except Exception as e:
-            current_app.logger.error("Error inserting appointment: %s", e)
-            db.session.rollback()
-            continue
-    
-    current_app.logger.info("Demo data inserted successfully.")
 
-def test_slot_generator(number_of_random_tests=10):
+                db.session.add(appointment)
+                db.session.commit()
+
+            except Exception as e:
+                current_app.logger.error("Error inserting appointment: %s", e)
+                db.session.rollback()
+                continue
+
+def test_generated_appointments():
     
     # Recupera tutte le disponibilità
     availabilities = Availability.query.all()
@@ -365,3 +378,12 @@ def test_slot_generator(number_of_random_tests=10):
     current_app.logger.debug("Test test_slot_generator passed.")
     return appointments
 
+def insert_demo_data():
+    # rispettare gli step di inserimento per evitare violazioni di chiave esterna
+    insert_patients_operators(10, 10)
+    insert_laboratories(10)
+    insert_exam_types(10)
+    insert_availabilities(50)
+    insert_lab_closures(20)
+    insert_operator_absences(20)
+    insert_appointments(0)

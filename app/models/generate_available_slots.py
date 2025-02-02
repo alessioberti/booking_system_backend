@@ -103,7 +103,7 @@ def generate_available_slots(availabilities, datetime_from_filter = None, dateti
                     "exam_type_name": availability.exam_type.name,
                     "laboratory_name": availability.laboratory.name,
                     "laboratory_address": availability.laboratory.address,
-                    "operator_name": "availability.operator.title availability.operator.first_name availability.operator.last_name",
+                    "operator_name": f"{availability.operator.title} {availability.operator.first_name} {availability.operator.last_name}",
                     "availability_date":  availability_date.isoformat(),
                     "availability_slot_start": availability_slot_start.isoformat(timespec='minutes'),
                     "availability_slot_end": availability_slot_end.isoformat(timespec='minutes')
