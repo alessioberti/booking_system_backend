@@ -1,8 +1,6 @@
 from flask import Flask
 from app.config import Config
-from app.extensions import db
-from app.extensions import JWTManager
-from app.models.model import *
+from app.extensions import db, jwt
 from flask import jsonify
 from contextlib import contextmanager
 
@@ -13,7 +11,7 @@ def create_app(config_class=Config):
     
     # Inizializzazione delle estensioni
     db.init_app(app)
-    jwt = JWTManager(app)
+    jwt.init_app(app)
 
     # Funzione per gestire le transazioni
     @contextmanager
@@ -33,18 +31,19 @@ def create_app(config_class=Config):
 
     # Creazione del database e inserimento dei dati di test in base alla configurazione
     with app.app_context():
+        
         db.create_all()
         app.logger.info("Database created")
-        if app.config['DEMO_DATA'] == "True":
-            from app.models.test.test_data import insert_demo_data
+       
+        if app.config['DEMO_DATA'] and not app.config['TEST_DATA']: 
+            from app.test import insert_demo_data
             app.logger.info("Inserting demo data")
-            db.drop_all()
-            db.create_all()
             insert_demo_data()
-            if app.config['TEST_DATA'] == "True":
-                from app.models.test.test_data import test_generated_appointments
-                app.logger.info("Testing slot generator")
-                test_generated_appointments()
+            
+        elif app.config['TEST_DATA']:
+            from app.test import insert_demo_data_with_tests
+            app.logger.info("Testing slot generator")
+            insert_demo_data_with_tests(10)
 
     # Registrazione delle route tramite blueprint
 

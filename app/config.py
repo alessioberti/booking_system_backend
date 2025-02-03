@@ -16,8 +16,6 @@ class Config:
     POSTGRES_DB = os.environ.get("POSTGRES_DB")
     SQLALCHEMY_DATABASE_URI = f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}/{POSTGRES_DB}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    DEMO_DATA = True
-    TEST_DATA = True
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
     JWT_ALGORITHM = 256
     JWT_ACCESS_TOKEN_EXPIRES = 3600
@@ -27,3 +25,5 @@ class Config:
     JWT_COOKIE_CSRF_PROTECT = False
     JWT_COOKIE_SECURE = False
     ENV = 'development'
+    DEMO_DATA = True
+    TEST_DATA = True

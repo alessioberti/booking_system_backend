@@ -1,6 +1,6 @@
 from app.models.model import Availability, ExamType, Operator, Laboratory
 from flask import jsonify
-from history.generate_available_slots_v2 import generate_available_slots
+from app.functions import generate_available_slots
 from datetime import datetime, time, timedelta
 from flask import request
 from uuid import UUID
