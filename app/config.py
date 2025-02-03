@@ -23,4 +23,4 @@ class Config:
     JWT_COOKIE_SECURE = False
     JWT_COOKIE_CSRF_PROTECT = False
     JWT_COOKIE_SECURE = False
-    
+    ENV = 'development'

@@ -10,8 +10,9 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
     app.logger.setLevel(app.config['LOG_LEVEL'])
     
-    # Inizializzazione delle teabelle e test dati
+    # Inizializzazione delle estensioni
     db.init_app(app)
+    jwt = JWTManager(app)
 
     # Funzione per gestire le transazioni
     @contextmanager
