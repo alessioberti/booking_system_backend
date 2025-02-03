@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 basedir = os.path.abspath(os.path.dirname(__file__))
 
+# SOLO PER SVILUPPO LOCALE IN PRODUZIONE USARE VARIABILI D'AMBIENTE
 load_dotenv(os.path.join(basedir, '.env'))
 
 class Config:

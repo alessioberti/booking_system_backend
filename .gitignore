@@ -175,3 +175,7 @@ cython_debug/
 
 # Images
 *.png
+
+# vscode
+
+.vscode/
