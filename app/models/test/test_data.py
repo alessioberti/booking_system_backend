@@ -1,6 +1,6 @@
 from flask import current_app
 from app.models.model import db, Account, Laboratory, Patient, Availability, Operator, ExamType, LaboratoryClosure, OperatorAbsence, Appointment
-from app.models.generate_available_slots_v1 import generate_available_slots
+from history.generate_available_slots_v2 import generate_available_slots
 import uuid
 from datetime import date, time, datetime, timedelta
 import random
@@ -271,15 +271,13 @@ def insert_appointments(numberof_appointments=1):
         for j in range(len(availabilies_with_slots)):
 
             try:
-                # seleziona una disponibilità e filtra appuntamenti, chiusure del laboratorio e assenze dell'operatore
+                # seleziona una disponibilità
                 availability = availabilies_with_slots[j]
-                laboratory_closures = LaboratoryClosure.query.filter_by(laboratory_id=availability.laboratory_id).all()
-                operator_absences = OperatorAbsence.query.filter_by(operator_id=availability.operator_id).all()
                 appointments = Appointment.query.filter_by(availability_id=availability.availability_id).all()
 
                 datetime_from_filter = datetime.combine(availability.available_from_date, time(0, 0))
                 date_to_filter = datetime.combine(availability.available_to_date, time(23, 59))
-                groupd_slots = generate_available_slots([availability],datetime_from_filter,date_to_filter,laboratory_closures,operator_absences,appointments)
+                groupd_slots = generate_available_slots(datetime_from_filter, date_to_filter, availability.exam_type_id, availability.operator_id, availability.laboratory_id)
 
                 if not groupd_slots:
                     empty_availabilities.append(availability.availability_id)
@@ -322,7 +320,7 @@ def test_generated_appointments():
     availabilities = Availability.query.all()
 
     # Generazione di tutti gli slot possibili
-    grouped_slots_without_filter = generate_available_slots(availabilities)
+    grouped_slots_without_filter = generate_available_slots()
     
     current_app.logger.debug("Generated %s slots", sum(len(slots) for slots in grouped_slots_without_filter.values()))
     

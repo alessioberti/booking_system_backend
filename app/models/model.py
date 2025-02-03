@@ -2,7 +2,7 @@ import uuid
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import text, Index
 from app.extensions import db
-from sqlalchemy_schemadisplay import create_schema_graph
+#from sqlalchemy_schemadisplay import create_schema_graph
 from sqlalchemy import MetaData
 
 
@@ -82,8 +82,6 @@ class LaboratoryClosure(db.Model):
     laboratory = db.relationship("Laboratory", back_populates="laboratory_closure")
     
     # Metodi 
-    
-   
 
 class ExamType(db.Model):
     __tablename__ = "exam_types"
