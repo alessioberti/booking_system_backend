@@ -80,6 +80,10 @@ class LaboratoryClosure(db.Model):
     # Relationships
 
     laboratory = db.relationship("Laboratory", back_populates="laboratory_closure")
+    
+    # Metodi 
+    
+   
 
 class ExamType(db.Model):
     __tablename__ = "exam_types"
@@ -153,6 +157,8 @@ class Availability(db.Model):
     operator = db.relationship("Operator", back_populates="availability")
     exam_type = db.relationship("ExamType", back_populates="availability")
     appointment = db.relationship("Appointment", back_populates="availability")
+    
+    # Metodi
 
 class Appointment(db.Model):
     __tablename__ = "appointment"

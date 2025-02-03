@@ -1,6 +1,6 @@
-from app.models.model import Appointment, Availability, ExamType, OperatorAbsence, LaboratoryClosure, Operator, Laboratory
+from app.models.model import Availability, ExamType, Operator, Laboratory
 from flask import jsonify
-from app.models.generate_available_slots import generate_available_slots
+from app.models.generate_available_slots_v2 import generate_available_slots
 from datetime import datetime, time, timedelta
 from flask import request
 from uuid import UUID
@@ -17,86 +17,6 @@ def first_day_of_prev_month(dt: datetime) -> datetime:
     if dt.month == 1:
         return datetime(dt.year - 1, 12, 1 ,0, 0)
     return datetime(dt.year, dt.month - 1, 1, 0, 0)
-
-# funzioni per filtrare le disponibilità, le chiusure dei laboratori, le assenze degli operatori e gli appuntamenti
-
-def get_filtered_availabilities(exam_type_id, operator_id, laboratory_id, datetime_from_filter, datetime_to_filter):
-    availabilities_query = (
-        Availability.query
-        .filter(Availability.exam_type_id == exam_type_id)
-        .filter(Availability.enabled == True)
-        .filter(Availability.available_from_date <= datetime_to_filter.date(), Availability.available_to_date >= datetime_from_filter.date())
-    )
-
-    if operator_id:
-        availabilities_query = availabilities_query.filter(Availability.operator_id == operator_id)
-    if laboratory_id:
-        availabilities_query = availabilities_query.filter(Availability.laboratory_id == laboratory_id)
-    
-    return availabilities_query.all()
-
-def get_filtered_laboratory_closures(exam_type_id, laboratory_id, datetime_from_filter, datetime_to_filter):
-
-    # recupera le chiusure dei laboratori se è stato fornito un laboratorio specifico oppure recupera tutte le chiusure dei laboratori per l'esame selezionato
-    laboratory_closures_query = (
-        LaboratoryClosure.query
-        .filter(LaboratoryClosure.start_datetime < datetime_to_filter, LaboratoryClosure.end_datetime > datetime_from_filter)
-    )
-
-    # se è impostato un laboratorio specifico filtra le chiusure per quel laboratorio
-    if laboratory_id:
-        laboratory_closures_query = laboratory_closures_query.filter(LaboratoryClosure.laboratory_id == laboratory_id)
-
-    # filtra le chiusure per l'esame selezionato e rimuove i duplicati
-
-    laboratory_closures_query = (laboratory_closures_query 
-            .join(Laboratory) 
-            .join(Availability) 
-            .filter(Availability.exam_type_id == exam_type_id)
-            .distinct()
-    )
-       
-    return laboratory_closures_query.all()
-
-def get_filtered_operator_absences(exam_type_id, operator_id, datetime_from_filter, datetime_to_filter): 
-
-    operator_absences_query = (
-        OperatorAbsence.query
-        .filter(OperatorAbsence.start_datetime < datetime_to_filter, OperatorAbsence.end_datetime > datetime_from_filter)
-    )
-
-    # se è impostato un operatore specifico filtra le assenze per quell'operatore
-    if operator_id:
-        operator_absences_query = operator_absences_query.filter(OperatorAbsence.operator_id == operator_id)
-    
-    # filtra le assenze per l'esame selezionato e rimuove i duplicati
-    operator_absences_query = (operator_absences_query
-            .join(Operator)
-            .join(Availability)
-            .filter(Availability.exam_type_id == exam_type_id)
-            .distinct()
-        )
-
-    return operator_absences_query.all()
-
-def get_filtered_appointments(exam_type_id, operator_id, laboratory_id, datetime_from_filter, datetime_to_filter):
-    appointments_query = (
-        Appointment.query
-        .join(Availability)
-        .filter(Appointment.rejected == False)
-        .filter(Appointment.appointment_date >= datetime_from_filter.date())
-        .filter(Appointment.appointment_date <= datetime_to_filter.date())
-        .filter(Availability.exam_type_id == exam_type_id)
-    )
-
-    # filtri per operatori e laboratori
-    if operator_id:
-        appointments_query = appointments_query.filter(Availability.operator_id == operator_id)
-    
-    if laboratory_id:
-        appointments_query = appointments_query.filter(Availability.laboratory_id == laboratory_id)
-    
-    return appointments_query.all()
 
 @bp.route('/api/v1/exam', methods=['GET'])
 def get_exam_types():
@@ -162,32 +82,12 @@ def get_exam_type_availabilities(exam_type_id):
     if (datetime_to_filter - datetime_from_filter) > (first_day_of_next_month(datetime_from_filter) - datetime_from_filter):
         datetime_to_filter = first_day_of_next_month(datetime_from_filter)
 
-    # recuperata le disponibilità per l'esame selezionato filtrando quelle nel passato e quelle oltre la data di fine prenotazione
-    # l'intervallo è chiuso perchè se coincide con la data di inizio o fine prenotazione deve essere considerato
-
-    availabilities = get_filtered_availabilities(exam_type_id, operator_id, laboratory_id, datetime_from_filter, datetime_to_filter)
-
-    # se non ci sono disponibilità restituisce un array vuoto
-    if not availabilities:
-        current_app.logger.info("No availabilities found for exam_type_id=%s", exam_type_id)
-        return jsonify([]), 200
-
-    # recupera le chiusure dei laboratori per l'intervallo di tempo selezionato
-
-    laboratory_closures = get_filtered_laboratory_closures(exam_type_id, laboratory_id, datetime_from_filter, datetime_to_filter)
-
-    # recupera le assenze degli operatori se è stato fornito un operatore specifico oppure recupera tutte le assenze degli operatori per l'esame selezionato
-
-    operator_absences = get_filtered_operator_absences(exam_type_id, operator_id, datetime_from_filter, datetime_to_filter)
-
-    # recupera gli appuntamenti già prenotati per l'esame selezionato
-
-    appointments = get_filtered_appointments(exam_type_id, operator_id, laboratory_id, datetime_from_filter, datetime_to_filter)
-
+    current_app.logger.debug("Datetime filter: %s - %s", datetime_from_filter, datetime_to_filter)
+    
     # genera gli slot disponibili
 
-    available_slots = generate_available_slots(availabilities, datetime_from_filter, datetime_to_filter, laboratory_closures, operator_absences, appointments)
-
+    available_slots = generate_available_slots(datetime_from_filter, datetime_to_filter, exam_type_id, operator_id, laboratory_id)
+ 
     available_dates_count = len(available_slots.keys())
     available_slots_count = sum(len(available_slots[date]) for date in available_slots.keys())
 

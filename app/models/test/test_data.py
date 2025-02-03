@@ -1,6 +1,6 @@
 from flask import current_app
 from app.models.model import db, Account, Laboratory, Patient, Availability, Operator, ExamType, LaboratoryClosure, OperatorAbsence, Appointment
-from app.models.generate_available_slots import generate_available_slots
+from app.models.generate_available_slots_v1 import generate_available_slots
 import uuid
 from datetime import date, time, datetime, timedelta
 import random
