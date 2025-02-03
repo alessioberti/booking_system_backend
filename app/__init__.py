@@ -1,6 +1,7 @@
 from flask import Flask
 from app.config import Config
 from app.extensions import db
+from app.extensions import JWTManager
 from app.models.model import *
 from flask import jsonify
 from contextlib import contextmanager

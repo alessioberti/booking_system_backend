@@ -19,7 +19,7 @@ class Account(db.Model):
     is_operator = db.Column(db.Boolean, default=False, nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
 
-    # relationships
+    # Relazioni
     operator = db.relationship("Operator", back_populates="account")
     patient = db.relationship("Patient", back_populates="account")
     appointment = db.relationship("Appointment", back_populates="account")
@@ -38,7 +38,7 @@ class Patient(db.Model):
     birth_date = db.Column(db.Date, nullable=False)
     anonimized = db.Column(db.Boolean, default=False, nullable=False)
 
-    # Relationships
+    # Relazioni
     account = db.relationship("Account", back_populates="patient")
     appointment = db.relationship("Appointment", back_populates="patient")
 
@@ -50,11 +50,11 @@ class Laboratory(db.Model):
     address = db.Column(db.String(255), nullable=True)
     tel_number = db.Column(db.String(255), nullable=True)
 
-    # Relationships
+    # Relazioni
     availability = db.relationship("Availability", back_populates="laboratory")
     laboratory_closure = db.relationship("LaboratoryClosure", back_populates="laboratory")
 
-    # Funzioni per la rappresentazione a stringa
+    # Metodi
 
     def to_dict(self):
         return {
@@ -91,7 +91,7 @@ class ExamType(db.Model):
      # Relationships
     availability = db.relationship("Availability", back_populates="exam_type")
 
-    # Funzioni per la rappresentazione a stringa
+    # Metodi
     def to_dict(self):
         return {
             "exam_type_id": self.exam_type_id,
@@ -108,12 +108,12 @@ class Operator(db.Model):
     first_name = db.Column(db.String(255), nullable=False)
     last_name = db.Column(db.String(255), nullable=False)
 
-     # Relationships
+     # Relazioni
     account = db.relationship("Account", back_populates="operator")
     availability = db.relationship("Availability", back_populates="operator")
     operator_absences = db.relationship("OperatorAbsence", back_populates="operator")
 
-    # Funzioni per la rappresentazione a stringa
+    # Metodi
     def to_dict(self):
         return {
             "operator_id": self.operator_id,
@@ -128,7 +128,7 @@ class OperatorAbsence(db.Model):
     start_datetime = db.Column(db.DateTime, nullable=False)
     end_datetime = db.Column(db.DateTime, nullable=False)
 
-    # Relationships
+    # Relazioni
     operator = db.relationship("Operator", back_populates="operator_absences")
 
 class Availability(db.Model):
@@ -147,7 +147,7 @@ class Availability(db.Model):
     pause_minutes = db.Column(db.Integer, nullable=False)
     enabled = db.Column(db.Boolean, default=True, nullable=False)
 
-    #Relationships
+    #Relazioni
 
     laboratory = db.relationship("Laboratory", back_populates="availability")
     operator = db.relationship("Operator", back_populates="availability")
@@ -167,12 +167,12 @@ class Appointment(db.Model):
     info = db.Column(db.String, nullable=True)
     rejected = db.Column(db.Boolean, default=False , nullable=False)
 
-    # Relationships
+    # Relazioni
     availability = db.relationship("Availability", back_populates="appointment")
     account = db.relationship("Account", back_populates="appointment")
     patient = db.relationship("Patient", back_populates="appointment")
 
-    # unique constraint
+    # unique constraint per evitare sovrapposizioni di appuntamenti attivi con lo stesso id di disponibilità, data e ora
 
     __table_args__ = (
         Index(
@@ -184,3 +184,18 @@ class Appointment(db.Model):
             postgresql_where=text("NOT rejected")
         ),
     )
+
+    # Metodi per la rappresentazione a stringa
+
+    def to_dict(self):
+        return {
+            "appointment_id": self.appointment_id,
+            "account_id": self.account_id,
+            "patient_id": self.patient_id,
+            "availability_id": self.availability_id,
+            "appointment_date": self.appointment_date,
+            "appointment_time_start": self.appointment_time_start,
+            "appointment_time_end": self.appointment_time_end,
+            "info": self.info,
+            "rejected": self.rejected
+        }
