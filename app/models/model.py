@@ -2,9 +2,6 @@ import uuid
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import text, Index
 from app.extensions import db
-#from sqlalchemy_schemadisplay import create_schema_graph
-from sqlalchemy import MetaData
-
 
 class Account(db.Model):
     __tablename__ = "account"
@@ -54,20 +51,6 @@ class Laboratory(db.Model):
     availability = db.relationship("Availability", back_populates="laboratory")
     laboratory_closure = db.relationship("LaboratoryClosure", back_populates="laboratory")
 
-    # Metodi
-
-    def to_dict(self):
-        return {
-            "laboratory_id": self.laboratory_id,
-            "name": self.name,
-        }
-    def to_dict_with_info(self):
-        return {
-            "laboratory_id": self.laboratory_id,
-            "name": self.name,
-            "address": self.address,
-            "tel_number": self.tel_number
-        }
 
 class LaboratoryClosure(db.Model):
     __tablename__ = "laboratory_closures"
@@ -188,18 +171,3 @@ class Appointment(db.Model):
             postgresql_where=text("NOT rejected")
         ),
     )
-
-    # Metodi per la rappresentazione a stringa
-
-    def to_dict(self):
-        return {
-            "appointment_id": self.appointment_id,
-            "account_id": self.account_id,
-            "patient_id": self.patient_id,
-            "availability_id": self.availability_id,
-            "appointment_date": self.appointment_date,
-            "appointment_time_start": self.appointment_time_start,
-            "appointment_time_end": self.appointment_time_end,
-            "info": self.info,
-            "rejected": self.rejected
-        }

@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta
 from flask import current_app
 
 from app.models.model import Availability, Appointment, LaboratoryClosure, OperatorAbsence
+from app.models.schema import Slot
 
 # aggiunge minuti ad un orario (non considera il cambio di giorno)
 def add_minutes_to_time(original_time, minutes_to_add):
@@ -84,7 +85,7 @@ def is_operator_id_absent(operator_absences , operator_id, slot_start_datetime, 
             slot_end_datetime > operator_absence.start_datetime
             for operator_absence in operator_absences
         ) 
-  
+
 # verifica se esiste lo slot è già stato prenotato in relazione ad una regola di disponibilità
 def is_slot_booked(appointments, availability_id, appointment_date, from_time, to_time):
     
@@ -105,9 +106,9 @@ def generate_available_slots(
     exam_type_id = None,
     operator_id = None,
     laboratory_id = None,
-    exclude_laboratory_closoure_slots = None, 
-    exclude_operator_abesence_slots = None, 
-    exclude_booked_slots= None
+    exclude_laboratory_closoure_slots = True, 
+    exclude_operator_abesence_slots = True, 
+    exclude_booked_slots= True
     ):
     
     availabilities_slots_dategroup = {}
@@ -161,6 +162,7 @@ def generate_available_slots(
                 # se lo slot supera l'orario esci dal ciclo e passa alla settimana successiva
                 if availability_slot_end > availability.available_to_time:
                    break
+                
                 slot = {
                     "availability_id": availability.availability_id,
                     "exam_type_name": availability.exam_type.name,

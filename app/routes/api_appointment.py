@@ -40,15 +40,19 @@ def reject_appointment(appointment_id):
 
 @bp.route('/api/v1/appointment', methods=['POST'])
 def create_appointment():
-    data = request.get_json()
-    
-    data['account_id'] = UUID(data['account_id'])
+    try:
+        data = request.get_json()
 
-    appointment = Appointment(**data)
+        appointment = Appointment()
+        appointment.from_dict(data)
 
-    current_app.logger.debug(appointment)
-    
-    with current_app.transaction():
-        db.session.add(appointment)
-    
-    return jsonify(appointment.to_dict()), 200
+        with current_app.transaction():
+            db.session.add(appointment)
+            db.session.commit()
+
+        return jsonify(appointment.to_dict()), 200
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify({"error": "Invalid data"}), 400
+    finally:
+        db.session.close()
