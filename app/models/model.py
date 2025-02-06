@@ -2,7 +2,7 @@ import uuid
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import text, Index
 from app.extensions import db
-
+from datetime import datetime
 class Account(db.Model):
     __tablename__ = "account"
 
@@ -166,6 +166,21 @@ class Appointment(db.Model):
     account = db.relationship("Account", back_populates="appointment")
     patient = db.relationship("Patient", back_populates="appointment")
 
+    def to_dict(self):
+        return {
+            "appointment_id": self.appointment_id,
+            "availability_id": self.availability_id,
+            "appointment_date": self.appointment_date.isoformat(),
+            "appointment_time_start": self.appointment_time_start.strftime("%H:%M"),
+            "appointment_time_end": self.appointment_time_end.strftime("%H:%M"),
+            "info": self.info,
+            "rejected": self.rejected,
+            "exam_type_name": self.availability.exam_type.name if self.availability.exam_type else None,
+            "laboratory_name": self.availability.laboratory.name if self.availability.laboratory else None,
+            "laboratory_address": self.availability.laboratory.address if self.availability.laboratory else None,
+            "patient_name": f"{self.patient.first_name} {self.patient.last_name}" if self.patient else None
+        }
+    
     # unique constraint per evitare sovrapposizioni di appuntamenti attivi con lo stesso id di disponibilità, data e ora
 
     __table_args__ = (

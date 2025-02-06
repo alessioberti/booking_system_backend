@@ -14,15 +14,12 @@ def get_mylogin():
     
     current_user = get_jwt_identity()
     
-    account = Account.query.join(Patient.is_default == True).filter(Account.account_id == current_user).first()
+    account = Account.query.get(current_user)
     if not account:
         return jsonify({"error": "Account not found"}), 404
     else:
         return jsonify(
                 email=account.email,
-                tel_number=account.tel_number,
-                first_name=account.first_name,
-                last_name=account.last_name
             ), 200
 
 @bp.route('/api/v1/register', methods=['POST'])

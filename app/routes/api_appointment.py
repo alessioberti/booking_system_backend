@@ -1,11 +1,11 @@
-from app.models.model import Appointment 
+from app.models.model import Appointment, ExamType, Laboratory, Patient, Availability
 from flask import jsonify
 from flask import request
 from uuid import UUID
 from app.routes import bp
 from flask import current_app
 from app import db
-from flask_jwt_extended import jwt_required, current_user
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 
 @bp.route('/api/v1/appointment', methods=['GET'])
@@ -15,8 +15,15 @@ def get_appointments():
     page = request.args.get('page', 1, type=int) if request.args.get('page') else 1
     per_page = request.args.get('per_page', 10, type=int) if request.args.get('per_page') else 10
     
-    appointments_query = Appointment.query.paginate(page, per_page, error_out=True)
-    
+    current_user = get_jwt_identity() 
+
+    # naviga tra le tabelle per ottenere i dati relativi agli appuntamenti
+    appointments_query = Appointment.query \
+    .join(Availability).join(ExamType).join(Laboratory).join(Patient) \
+    .filter(Appointment.account_id != current_user) \
+    .paginate(page=page, per_page=per_page, error_out=True)
+
+    # usa il metodo to_dict per ottenere solo i dati necessari e restiuici un json 
     return jsonify({
         'total': appointments_query.total,
         'pages': appointments_query.pages,
