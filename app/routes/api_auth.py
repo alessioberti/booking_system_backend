@@ -6,7 +6,7 @@ from flask import current_app
 import re, uuid
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime, timedelta
-from flask_jwt_extended import create_access_token, set_access_cookies, jwt_required, get_jwt_identity
+from flask_jwt_extended import create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies, create_refresh_token, set_refresh_cookies
 
 @bp.route('/api/v1/mylogin', methods=['GET'])
 @jwt_required()
@@ -107,8 +107,11 @@ def login():
         db.session.commit()
         # Genera il token JWT
         access_token = create_access_token(identity=account.account_id)
+        refresh_token = create_refresh_token(identity=account.account_id)
+
         resp = make_response({"message": "Logged in"})
         set_access_cookies(resp, access_token)
+        set_refresh_cookies(resp, refresh_token)
         return resp
     
     else:
@@ -117,3 +120,19 @@ def login():
         account.last_failed_login = datetime.now()
         db.session.commit()
         return jsonify({"error": "Invalid email or password"}), 401
+
+@bp.route('/api/v1/logout', methods=['POST'])
+@jwt_required()
+def logout():
+    resp = make_response({"message": "Logged out"})
+    unset_jwt_cookies(resp)
+    return resp
+
+@bp.route('/api/v1/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+    current_user = get_jwt_identity()
+    access_token = create_access_token(identity=current_user)
+    resp = make_response({"message": "Token refreshed"})
+    set_access_cookies(resp, access_token)
+    return resp

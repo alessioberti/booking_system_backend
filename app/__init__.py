@@ -15,7 +15,8 @@ def create_app(config_class=Config):
     jwt.init_app(app)
 
     # Configurazione CORS - abilita solo il frontend
-    CORS(app, resources={r"/api/*": {"origins": '*', "supports_credentials": True}})
+    FRONTEND_URL = app.config['FRONTEND_URL']
+    CORS(app, resources={r"/api/*": {"origins": FRONTEND_URL, "supports_credentials": True}})
 
     # Creazione del database e inserimento dei dati di test in base alla configurazione
     with app.app_context():
