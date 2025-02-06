@@ -1,8 +1,7 @@
 from datetime import date, datetime, timedelta
 from flask import current_app
-
 from app.models.model import Availability, Appointment, LaboratoryClosure, OperatorAbsence
-from app.models.schema import Slot
+
 
 # aggiunge minuti ad un orario (non considera il cambio di giorno)
 def add_minutes_to_time(original_time, minutes_to_add):

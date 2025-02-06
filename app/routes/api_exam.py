@@ -6,6 +6,7 @@ from flask import request
 from uuid import UUID
 from app.routes import bp
 from flask import current_app
+from flask_jwt_extended import jwt_required
 
 # funzioni per ottenere il primo giorno del mese successivo e del mese precedente
 # le date sono impostate a mezzanotte per forzare un limite inclusivo per la data di inizio e esclusivo per la data di fine
@@ -19,10 +20,11 @@ def first_day_of_prev_month(dt: datetime) -> datetime:
     return datetime(dt.year, dt.month - 1, 1, 0, 0)
 
 @bp.route('/api/v1/exam', methods=['GET'])
+@jwt_required()
 def get_exam_types():
     
-    page = request.args.get('page', 1, type=int) if request.args.get('page') else 1
-    per_page = request.args.get('per_page', 10, type=int) if request.args.get('per_page') else 10
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
     
     exam_types_query= ExamType.query.join(Availability).filter(Availability.enabled == True).paginate(page=page, per_page=per_page, error_out=True)
 
@@ -34,6 +36,7 @@ def get_exam_types():
     })
 
 @bp.route('/api/v1/exam/<exam_type_id>', methods=['GET'])
+@jwt_required()
 def get_exam_type(exam_type_id):
     exam_type = ExamType.query.get(UUID(exam_type_id))
     if exam_type:
@@ -41,6 +44,7 @@ def get_exam_type(exam_type_id):
     return jsonify({"error": "Exam type not found"}), 404
 
 @bp.route('/api/v1/exam/<exam_type_id>/available-slots', methods=['GET'])
+@jwt_required()
 def get_exam_type_availabilities(exam_type_id):
 
     # imposto i limiti per la data di prenotazione e la data di fine prenotazione 
@@ -52,8 +56,8 @@ def get_exam_type_availabilities(exam_type_id):
 
     # recupera i parametri dalla query string e li converte in UUID
     exam_type_id = UUID(exam_type_id)
-    operator_id = UUID(request.args.get('operator_id')) if request.args.get('operator_id') else None
-    laboratory_id = UUID(request.args.get('laboratory_id')) if request.args.get('laboratory_id') else None
+    operator_id = UUID(request.args.get('operator_id'))
+    laboratory_id = UUID(request.args.get('laboratory_id'))
 
     # se è stata fornita una data specifica per restituire gli slot di una data specifica
     page_date_str = request.args.get('page_date')
@@ -96,9 +100,9 @@ def get_exam_type_availabilities(exam_type_id):
     
     # genera i filtri per la selezione degli operatori e dei laboratori    
     # genera la lista di operatori e laboratori disponibili per l'esame selezionato senza duplicati
-    laboratory_list = [laboratory.to_dict() for laboratory in Laboratory.query.join(Availability).filter(Availability.exam_type_id == exam_type_id).distinct().all()]
-    operator_list = [operator.to_dict() for operator in Operator.query.join(Availability).filter(Availability.exam_type_id == exam_type_id).distinct().all()]
-
+    distinct_laboratories = Laboratory.query.join(Availability).filter(Availability.exam_type_id == exam_type_id).distinct()
+    distinct_operators = Operator.query.join(Availability).filter(Availability.exam_type_id == exam_type_id).distinct()
+    
     if not available_slots:
         date_list = []
         date_slots = []
@@ -126,8 +130,8 @@ def get_exam_type_availabilities(exam_type_id):
         next_cursor_datetime = next_month.isoformat()
 
     return jsonify({
-                "operators": operator_list,
-                "laboratories": laboratory_list,
+                "operators": [distinct_operator.to_dict() for distinct_operator in distinct_operators],
+                "laboratories": [distinct_laboratory.to_dict() for distinct_laboratory in distinct_laboratories],
                 "date_list": date_list,
                 "slots": date_slots,
                 "next_cursor_datetime": next_cursor_datetime,

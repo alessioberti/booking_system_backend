@@ -51,6 +51,13 @@ class Laboratory(db.Model):
     availability = db.relationship("Availability", back_populates="laboratory")
     laboratory_closure = db.relationship("LaboratoryClosure", back_populates="laboratory")
 
+    # Metodi
+
+    def to_dict(self):
+        return {
+            "laboratory_id": self.laboratory_id,
+            "name": self.name,
+        }
 
 class LaboratoryClosure(db.Model):
     __tablename__ = "laboratory_closures"

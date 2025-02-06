@@ -5,8 +5,11 @@ from uuid import UUID
 from app.routes import bp
 from flask import current_app
 from app import db
+from flask_jwt_extended import jwt_required, current_user
+
 
 @bp.route('/api/v1/appointment', methods=['GET'])
+@jwt_required()
 def get_appointments():
     
     page = request.args.get('page', 1, type=int) if request.args.get('page') else 1
@@ -22,29 +25,44 @@ def get_appointments():
     })
 
 @bp.route('/api/v1/appointment/<appointment_id>', methods=['GET'])
+@jwt_required()
 def get_appointment(appointment_id):
     appointment = Appointment.query.get(UUID(appointment_id))
     if appointment:
         return jsonify(appointment.to_dict())
     return jsonify({"error": "Appointment not found"}), 404
 
-@bp.route('/api/v1/appointment/<appointment_id>/reject', methods=['POST'])
+@bp.route('/api/v1/appointment/<appointment_id>/reject', methods=['PUT'])
+@jwt_required()
 def reject_appointment(appointment_id):
-    appointment = Appointment.query.get(UUID(appointment_id))
-    if appointment:
-        appointment.reject()
-        with current_app.transaction():
-            pass
-        return jsonify(appointment.to_dict())
-    return jsonify({"error": "Appointment not found"}), 404
+    
+    try:
+        appointment = Appointment.query.get(UUID(appointment_id))
+        appointment.rejected = True
+        db.session.commit()
+        return jsonify(appointment.to_dict()), 200
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify({"error": "Invalid data"}), 400
 
 @bp.route('/api/v1/appointment', methods=['POST'])
 def create_appointment():
     try:
-        data = request.get_json()
+        
+        current_user = current_user()
 
-        appointment = Appointment()
-        appointment.from_dict(data)
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid data"}), 400
+
+        appointment = Appointment(
+            account_id=current_user.get("account_id"),
+            patient_id=current_user.get("account_id"),
+            exam_id=data.get("exam_id"),
+            datetime=data.get("datetime"),
+            laboratory_id=data.get("laboratory_id"),
+            operator_id=data.get("operator_id")
+        )
 
         with current_app.transaction():
             db.session.add(appointment)

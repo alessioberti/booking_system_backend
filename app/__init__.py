@@ -1,9 +1,10 @@
 from flask import Flask
 from app.config import Config
 from app.extensions import db, jwt
+from flask_cors import CORS
 from flask import jsonify
-from contextlib import contextmanager
-
+from app.models import Account
+from werkzeug.security import generate_password_hash
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
@@ -13,21 +14,8 @@ def create_app(config_class=Config):
     db.init_app(app)
     jwt.init_app(app)
 
-    # Funzione per gestire le transazioni
-    @contextmanager
-    def transaction():
-        try:
-            yield
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            app.logger.error(f"Transaction error: {e}")
-            raise
-        finally:
-            db.session.close()
-
-    # Registrazione della funzione transaction come metodo dell'applicazione
-    app.transaction = transaction
+    # Configurazione CORS - abilita solo il frontend
+    CORS(app, resources={r"/api/*": {"origins": '*', "supports_credentials": True}})
 
     # Creazione del database e inserimento dei dati di test in base alla configurazione
     with app.app_context():
@@ -43,7 +31,18 @@ def create_app(config_class=Config):
         elif app.config['TEST_DATA']:
             from app.test import insert_demo_data_with_tests
             app.logger.info("Testing slot generator")
-            insert_demo_data_with_tests(10)
+            insert_demo_data_with_tests(1)
+    
+        # inserisci account di admin se non esiste
+
+        if not Account.query.filter_by(email=app.config['ADMIN_EMAIL']).first():
+            new_admin = Account(
+                email=app.config['ADMIN_EMAIL'],
+                password_hash=generate_password_hash(app.config['ADMIN_PASSWORD']),
+                is_admin=True
+            )
+            db.session.add(new_admin)
+            db.session.commit()
 
     # Registrazione delle route tramite blueprint
 

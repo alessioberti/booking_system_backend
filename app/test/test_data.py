@@ -4,7 +4,7 @@ from app.functions import generate_available_slots
 import uuid
 from datetime import date, time, datetime, timedelta
 import random
-
+from werkzeug.security import generate_password_hash
 def clear_all_tables():
     try:
         # cancella tutte le righe delle tabelle in ordine inverso per evitare violazioni di chiave esterna
@@ -437,7 +437,7 @@ def insert_demo_data():
             insert_availabilities(10)
             insert_lab_closures(20)
             insert_operator_absences(20)
-            insert_appointments(600, 100)
+            insert_appointments(600, 10)
 
         db.session.commit()
     except Exception as e:
