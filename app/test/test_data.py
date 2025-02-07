@@ -433,11 +433,11 @@ def insert_demo_data():
         with db.session.begin_nested():
             insert_patients_operators(10, 10)
             insert_laboratories(10)
-            insert_exam_types(10)
-            insert_availabilities(10)
-            insert_lab_closures(20)
-            insert_operator_absences(20)
-            insert_appointments(600, 10)
+            insert_exam_types(2)
+            insert_availabilities(5)
+            insert_lab_closures(0)
+            insert_operator_absences(0)
+            insert_appointments(10, 200)
 
         db.session.commit()
     except Exception as e:

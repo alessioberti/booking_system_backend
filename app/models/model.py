@@ -88,7 +88,7 @@ class ExamType(db.Model):
         return {
             "exam_type_id": self.exam_type_id,
             "name": self.name,
-            "description": self.description
+            "description": self.description,
         }
 
 class Operator(db.Model):
@@ -178,6 +178,7 @@ class Appointment(db.Model):
             "exam_type_name": self.availability.exam_type.name if self.availability.exam_type else None,
             "laboratory_name": self.availability.laboratory.name if self.availability.laboratory else None,
             "laboratory_address": self.availability.laboratory.address if self.availability.laboratory else None,
+            "laboratory_tel_number": self.availability.laboratory.tel_number if self.availability.laboratory else None,
             "patient_name": f"{self.patient.first_name} {self.patient.last_name}" if self.patient else None
         }
     
