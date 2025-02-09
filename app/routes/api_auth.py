@@ -6,7 +6,6 @@ import re
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime, timedelta
 from flask_jwt_extended import create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies, create_refresh_token, set_refresh_cookies
-from uuid import UUID
 from flask import current_app
 from datetime import datetime
 
@@ -48,26 +47,39 @@ def register():
         email_regex    = r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$'
         #Numero di telefono con o senza prefisso internazionale
         tel_number_regex = r'^\+?\d{10,13}$'
+        #campo dodice fiscale accetta solo lettere e numeri (possibilità di inserire un documento straniero )
+        fiscal_code_regex = r'^[a-zA-Z0-9]+$'
+        #Data di nascita nel formato ISO
+        birth_date_regex = r'^\d{4}-\d{2}-\d{2}$'
+        # nome e cognome solo lettere apostrofo e spazi
+        name_regex = r'^[\w\'\-,.][^0-9_!¡?÷?¿/\\+=@#$%^&*(){}|~<>;:[\]]{2,}$'
 
         data = request.json
 
         if not data:
+            current_app.logger.error("Missing JSON body")
             return jsonify({"Request invalid":"missing JSON body"}), 400
         if not re.match(password_regex, data.get("password", "")):
+            current_app.logger.error("Invalid password")
             return jsonify({"error": "Invalid password"}), 400
         if not re.match(email_regex, data.get("email", "")):
+            current_app.logger.error("Invalid email")
             return jsonify({"error": "Invalid email"}), 400
         if not re.match(tel_number_regex, data.get("tel_number", "")):
+            current_app.logger.error("Invalid tel_number")
             return jsonify({"error": "Invalid tel_number"}), 400
-        
-        # verifica se la data di nascita è valida altrimenti restituisce un errore 409 
-        
-        if not isinstance(data.get("birth_date"), datetime):
-            birth_date = datetime.strptime(data.get("birth_date"), "%Y-%m-%d")
-            if birth_date > datetime.now() and birth_date < datetime(1900, 1, 1):
-                return jsonify({"error": "Invalid birth_date"}), 409
-        else:
+        if not re.match(fiscal_code_regex, data.get("fiscal_code", "")):
+            current_app.logger.error("Invalid fiscal_code")
+            return jsonify({"error": "Invalid fiscal_code"}), 400
+        if not re.match(birth_date_regex, data.get("birth_date", "")):
+            current_app.logger.error("Invalid birth_date")
             return jsonify({"error": "Invalid birth_date"}), 400
+        if not re.match(name_regex, data.get("first_name", "")):
+            current_app.logger.error("Invalid first_name")
+            return jsonify({"error": "Invalid first_name"}), 400
+        if not re.match(name_regex, data.get("last_name", "")):
+            current_app.logger.error("Invalid last_name")
+            return jsonify({"error": "Invalid last_name"}), 400
         
         # verifica se l'email è già in uso altrimenti restituisce un errore 422 
 
@@ -84,7 +96,7 @@ def register():
             last_name=data.get("last_name"),
             tel_number=data.get("tel_number"),
             fiscal_code=data.get("fiscal_code"),
-            birth_date=birth_date,
+            birth_date=data.get("birth_date")
         )
         db.session.commit()
         return jsonify({"message": "Account created"}), 200
@@ -118,7 +130,7 @@ def login():
         # Reset tentativi falliti e aggiorna il database
         account.failed_login_count = 0
         account.last_failed_login = None
-        account.last_success_logon = datetime.now()
+        account.last_success_login = datetime.now()
         db.session.commit()
         # Genera il token JWT
         access_token = create_access_token(identity=account.account_id)

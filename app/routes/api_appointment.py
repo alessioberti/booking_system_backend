@@ -7,7 +7,6 @@ from flask import current_app
 from app import db
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-
 @bp.route('/api/v1/appointments', methods=['GET'])
 @jwt_required()
 def get_appointments():
@@ -58,7 +57,7 @@ def get_appointment_patient(appointment_id):
     
     current_user = get_jwt_identity()
     # restituisce i dati del paziente associato all'appuntamento e all'utente corrente
-    appointment = Appointment.query.filter_by(id=UUID(appointment_id), account_id=current_user).first()
+    appointment = Appointment.query.filter_by(appointment_id=UUID(appointment_id), account_id=current_user).first()
     
     if appointment:
         return jsonify(appointment.patient.to_dict())
@@ -67,8 +66,7 @@ def get_appointment_patient(appointment_id):
 @bp.route('/api/v1/appointment', methods=['POST'])
 @jwt_required()
 def create_appointment():
-    try:
-        
+
         current_user = get_jwt_identity()
         data = request.get_json()
         if not data:
@@ -76,16 +74,70 @@ def create_appointment():
 
         patient = data.get("patient")    
         appointment = data.get("appointment")
+
         appointment["account_id"] = current_user
         
-        appointment = Appointment(**appointment)
-        appointment.create_new(**patient)
+        # crea un nuovo appuntamento
+        appointment = Appointment(
+            availability_id = appointment.get("availability_id"),
+            appointment_date = appointment.get("appointment_date"),
+            appointment_time_start = appointment.get("appointment_time_start"),
+            appointment_time_end = appointment.get("appointment_time_end"),
+            info = appointment.get("info"),
+            account_id = current_user
+        )
+
+        # usa il metodo create_new per creare un nuovo paziente e associarlo all'appuntamento
+        appointment.create_new(
+            patient_first_name = patient.get("first_name"),
+            patient_last_name = patient.get("last_name"),
+            patient_email = patient.get("email"),
+            patient_tel_number = patient.get("tel_number"),
+            patient_fiscal_code = patient.get("fiscal_code"),
+            patient_birth_date = patient.get("birth_date"),
+            patient_is_default = patient.get("is_default")
+        )
         db.session.commit()
 
         return jsonify({"success": "Appointment created"}), 200
-    except Exception as e:
-        current_app.logger.error(e)
-        db.session.rollback()
+
+@bp.route('/api/v1/appointments/<appointment_id>/info', methods=['PUT'])
+@jwt_required()
+def edit_appointment(appointment_id):
+    
+    current_user = get_jwt_identity()
+    data = request.get_json()
+    if not data:
         return jsonify({"error": "Invalid data"}), 400
-    finally:
-        db.session.close()
+
+    appointment = Appointment.query.filter_by(appointment_id=UUID(appointment_id), account_id=current_user).first()
+    if appointment:
+        appointment.info = data.get("info")
+        db.session.commit()
+        return jsonify(appointment.to_dict())
+    return jsonify({"error": "Appointment not found"}), 404
+
+# modifica i dati del paziente associato all'appuntamento se il paziente non è di default
+@bp.route('/api/v1/appointments/<appointment_id>/patient', methods=['PUT'])
+@jwt_required()
+def edit_appointment_patient(appointment_id):
+    
+    current_user = get_jwt_identity()
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid data"}), 400
+    
+    patient_data = data.get("patient")
+    # recupera i dati del paziente associato all'appuntamento e all'utente corrente
+    patient = Patient.query.filter_by(patient_id=UUID(patient_data.get("patient_id")), account_id=current_user).first()
+
+    # se l'appuntamento esiste e il paziente non è di default aggiorna i dati del paziente  
+    if patient and patient_data.get("is_default") == False:
+        patient.first_name = patient_data.get("first_name")
+        patient.last_name = patient_data.get("last_name")
+        patient.tel_number = patient_data.get("tel_number")
+        patient.fiscal_code = patient_data.get("fiscal_code")
+        patient.birth_date = patient_data.get("birth_date")
+        db.session.commit()
+        return jsonify(patient.to_dict())
+    return jsonify({"error": "Unable to update"}), 404

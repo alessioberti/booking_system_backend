@@ -5,6 +5,7 @@ from flask_cors import CORS
 from flask import jsonify
 from app.models import Account
 from werkzeug.security import generate_password_hash
+import uuid
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
@@ -35,9 +36,9 @@ def create_app(config_class=Config):
             insert_demo_data_with_tests(1)
     
         # inserisci account di admin se non esiste usando il metodo create_new (crea anche il paziente)
-        
         try:
-            if  Account.query.filter_by(email=app.config['ADMIN_EMAIL']).first():
+            existing_admin = Account.query.filter_by(email=app.config['ADMIN_EMAIL']).first()
+            if  existing_admin is None:
                     admin = Account(
                             email=app.config['ADMIN_EMAIL'],
                             password_hash = generate_password_hash(app.config['ADMIN_PASSWORD']),

@@ -13,7 +13,7 @@ class Account(db.Model):
     enabled = db.Column(db.Boolean, default=True, nullable=False)
     failed_login_count = db.Column(db.Integer, default=0)
     last_failed_login = db.Column(db.DateTime, nullable=True)
-    last_success_logn = db.Column(db.DateTime, nullable=True)
+    last_success_login = db.Column(db.DateTime, nullable=True)
     is_operator = db.Column(db.Boolean, default=False, nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
 
@@ -26,10 +26,11 @@ class Account(db.Model):
 
     # crea account e paziente di default
     def create_new(self ,first_name,last_name,tel_number,fiscal_code,birth_date):
-   
+            
             db.session.add(self)
-            # froza il commit per ottenere l'id dell'account
+            # usa il flush per ottenere l'id dell'account
             db.session.flush()
+            current_app.logger.info("Account created %s", self.account_id)
             default_patient = Patient(
                 account_id=self.account_id,
                 first_name=first_name,
@@ -41,7 +42,7 @@ class Account(db.Model):
                 is_default=True # il primo paziente creato è il paziente di default
             )
             db.session.add(default_patient)
-        
+
     def to_dict(self):
         return {
             "account_id": self.account_id,
@@ -74,9 +75,9 @@ class Patient(db.Model):
             "first_name": self.first_name,
             "last_name": self.last_name,
             "email": self.email,
-            "tel_number": self.tel_number if not self.anonimized else None,
-            "fiscal_code": self.fiscal_code if not self.anonimized else None,
-            "birth_date": self.birth_date.isoformat() if self.birth_date else None,
+            "tel_number": self.tel_number,
+            "fiscal_code": self.fiscal_code,
+            "birth_date": self.birth_date.isoformat(),
             "is_default": self.is_default,
         }
 
@@ -222,37 +223,44 @@ class Appointment(db.Model):
             "laboratory_address": self.availability.laboratory.address if self.availability.laboratory else None,
             "laboratory_tel_number": self.availability.laboratory.tel_number if self.availability.laboratory else None,
             "patient_name": f"{self.patient.first_name} {self.patient.last_name}" if self.patient else None,
-            "operator_name": f"{self.availability.operator.title} {self.availability.operator.first_name} {self.availability.operator.last_name}" if self.availability.operator else None
-        }
+            "operator_name": f"{self.availability.operator.title} {self.availability.operator.first_name} {self.availability.operator.last_name}" if self.availability.operator else None,
+            }
     
     # crea un nuovo appuntamento se il paziente non è di default crealo e associarlo all'appuntamento
-    def create_new(self, **patient_data):
-            
-            if patient_data.get("is_default") == True:
+    def create_new(
+            self, 
+            patient_first_name,
+            patient_last_name,
+            patient_email,
+            patient_tel_number,
+            patient_fiscal_code,
+            patient_birth_date,
+            patient_is_default ):
+ 
+            if patient_is_default == True:
                 patient = Patient.query.filter_by(account_id=self.account_id, is_default=True).first()
-                current_app.logger.info(patient)
                 self.patient_id = patient.patient_id
+
             else:
                 # Altrimenti, crea un nuovo paziente
-                birth_date_value = patient_data.get("birth_date")
-                birth_date = datetime.strptime(birth_date_value, "%Y-%m-%d").date() if birth_date_value else None
-
                 patient = Patient(
                     account_id=self.account_id,
-                    first_name=patient_data.get("first_name"),
-                    last_name=patient_data.get("last_name"),
-                    email=patient_data.get("email"),
-                    tel_number=patient_data.get("tel_number"),
-                    fiscal_code=patient_data.get("fiscal_code"),
-                    birth_date= birth_date,
-                    is_default= patient_data.get("is_default")
+                    first_name= patient_first_name,
+                    last_name=patient_last_name,
+                    email=patient_email,
+                    tel_number=patient_tel_number,
+                    fiscal_code=patient_fiscal_code,
+                    birth_date= patient_birth_date,
+                    is_default= patient_is_default
                 )
+
                 db.session.add(patient)
+                # usa il flush per ottenere l'id del paziente
                 db.session.flush()
                 self.patient_id = patient.patient_id
             db.session.add(self)
             return self
-
+        
     # unique constraint per evitare sovrapposizioni di appuntamenti attivi con lo stesso id di disponibilità, data e ora
 
     __table_args__ = (
