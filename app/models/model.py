@@ -77,58 +77,70 @@ class Patient(db.Model):
             "email": self.email,
             "tel_number": self.tel_number,
             "fiscal_code": self.fiscal_code,
-            "birth_date": self.birth_date.isoformat(),
+            "birth_date": self.birth_date.isoformat() if self.birth_date else None,
             "is_default": self.is_default,
         }
 
-class Laboratory(db.Model):
-    __tablename__ = "laboratories"
+    # Vincoli
+    # evita più pazienti di default per account
+    __table_args__ = (
+        Index(
+            "ix_account_default_patient",
+            "account_id",
+            unique=True,
+            postgresql_where=text("is_default = true")
+        ),
+    )
 
-    laboratory_id = db.Column( UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
+
+class Location(db.Model):
+    __tablename__ = "location"
+
+    location_id = db.Column( UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     address = db.Column(db.String(255), nullable=True)
     tel_number = db.Column(db.String(255), nullable=True)
 
     # Relazioni
-    availability = db.relationship("Availability", back_populates="laboratory")
-    laboratory_closure = db.relationship("LaboratoryClosure", back_populates="laboratory")
+    availability = db.relationship("Availability", back_populates="location")
+    location_closure = db.relationship("LocationClosure", back_populates="location")
 
     # Metodi
 
     def to_dict(self):
         return {
-            "laboratory_id": self.laboratory_id,
+            "location_id": self.location_id,
             "name": self.name,
         }
 
-class LaboratoryClosure(db.Model):
-    __tablename__ = "laboratory_closures"
+class LocationClosure(db.Model):
+    __tablename__ = "location_closure"
 
     closure_id = db.Column( UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
-    laboratory_id = db.Column( UUID(as_uuid=True), db.ForeignKey("laboratories.laboratory_id"), nullable=False)
+    location_id = db.Column( UUID(as_uuid=True), db.ForeignKey("location.location_id"), nullable=False)
     start_datetime = db.Column(db.DateTime, nullable=False)
     end_datetime = db.Column(db.DateTime, nullable=False)
 
     # Relationships
 
-    laboratory = db.relationship("Laboratory", back_populates="laboratory_closure")
+    location = db.relationship("Location", back_populates="location_closure")
     
     # Metodi 
 
-class ExamType(db.Model):
-    __tablename__ = "exam_types"
+class Service(db.Model):
+    __tablename__ = "service"
 
-    exam_type_id = db.Column( UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
+    service_id = db.Column( UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
     name = db.Column(db.String(255), unique=True, nullable=False)
     description = db.Column(db.String, nullable=True)
 
      # Relationships
-    availability = db.relationship("Availability", back_populates="exam_type")
+    availability = db.relationship("Availability", back_populates="service")
 
     # Metodi
     def to_dict(self):
         return {
-            "exam_type_id": self.exam_type_id,
+            "service_id": self.service_id,
             "name": self.name,
             "description": self.description,
         }
@@ -145,7 +157,7 @@ class Operator(db.Model):
      # Relazioni
     account = db.relationship("Account", back_populates="operator")
     availability = db.relationship("Availability", back_populates="operator")
-    operator_absences = db.relationship("OperatorAbsence", back_populates="operator")
+    operator_absence = db.relationship("OperatorAbsence", back_populates="operator")
 
     # Metodi
     def to_dict(self):
@@ -155,7 +167,7 @@ class Operator(db.Model):
         }
 
 class OperatorAbsence(db.Model):
-    __tablename__ = "operator_absences"
+    __tablename__ = "operator_absence"
 
     absence_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
     operator_id = db.Column(UUID(as_uuid=True),db.ForeignKey("operators.operator_id"),nullable=False)
@@ -163,14 +175,14 @@ class OperatorAbsence(db.Model):
     end_datetime = db.Column(db.DateTime, nullable=False)
 
     # Relazioni
-    operator = db.relationship("Operator", back_populates="operator_absences")
+    operator = db.relationship("Operator", back_populates="operator_absence")
 
 class Availability(db.Model):
     __tablename__ = "availability"
 
     availability_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False )
-    exam_type_id = db.Column(UUID(as_uuid=True),db.ForeignKey("exam_types.exam_type_id"),nullable=False)
-    laboratory_id = db.Column(UUID(as_uuid=True),db.ForeignKey("laboratories.laboratory_id"),nullable=False)
+    service_id = db.Column(UUID(as_uuid=True),db.ForeignKey("service.service_id"),nullable=False)
+    location_id = db.Column(UUID(as_uuid=True),db.ForeignKey("location.location_id"),nullable=False)
     operator_id = db.Column(UUID(as_uuid=True),db.ForeignKey("operators.operator_id"),nullable=False)
     available_from_date = db.Column(db.Date, nullable=False)
     available_to_date = db.Column(db.Date, nullable=False)
@@ -183,9 +195,9 @@ class Availability(db.Model):
 
     #Relazioni
 
-    laboratory = db.relationship("Laboratory", back_populates="availability")
+    location = db.relationship("Location", back_populates="availability")
     operator = db.relationship("Operator", back_populates="availability")
-    exam_type = db.relationship("ExamType", back_populates="availability")
+    service = db.relationship("Service", back_populates="availability")
     appointment = db.relationship("Appointment", back_populates="availability")
     
     # Metodi
@@ -218,10 +230,10 @@ class Appointment(db.Model):
             "appointment_time_end": self.appointment_time_end.strftime("%H:%M"),
             "info": self.info,
             "rejected": self.rejected,
-            "exam_type_name": self.availability.exam_type.name if self.availability.exam_type else None,
-            "laboratory_name": self.availability.laboratory.name if self.availability.laboratory else None,
-            "laboratory_address": self.availability.laboratory.address if self.availability.laboratory else None,
-            "laboratory_tel_number": self.availability.laboratory.tel_number if self.availability.laboratory else None,
+            "service_name": self.availability.service.name if self.availability.service else None,
+            "location_name": self.availability.location.name if self.availability.location else None,
+            "location_address": self.availability.location.address if self.availability.location else None,
+            "location_tel_number": self.availability.location.tel_number if self.availability.location else None,
             "patient_name": f"{self.patient.first_name} {self.patient.last_name}" if self.patient else None,
             "operator_name": f"{self.availability.operator.title} {self.availability.operator.first_name} {self.availability.operator.last_name}" if self.availability.operator else None,
             }
@@ -261,8 +273,9 @@ class Appointment(db.Model):
             db.session.add(self)
             return self
         
-    # unique constraint per evitare sovrapposizioni di appuntamenti attivi con lo stesso id di disponibilità, data e ora
+    # vincoli
 
+    # evita sovrapposizioni di appuntamenti attivi con lo stesso id di disponibilità, data e ora
     __table_args__ = (
         Index(
             "uq_active_appointments",
@@ -270,6 +283,6 @@ class Appointment(db.Model):
             "appointment_date",
             "appointment_time_start",
             unique=True,
-            postgresql_where=text("NOT rejected")
+            postgresql_where=text("rejected = false")
         ),
     )

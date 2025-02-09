@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta
 from flask import current_app
-from app.models.model import Availability, Appointment, LaboratoryClosure, OperatorAbsence
+from app.models.model import Availability, Appointment, LocationClosure, OperatorAbsence
 
 
 # aggiunge minuti ad un orario (non considera il cambio di giorno)
@@ -10,14 +10,14 @@ def add_minutes_to_time(original_time, minutes_to_add):
         return temp_datetime.time()
 
 # recupera le disponibilità attive con filtri per data, tipo esame, operatore e laboratorio (se speficiati) e in sovrapposizione con date e orari (se specificati)
-def get_enabled_availabilities(from_datetime = None, to_datetime = None, exam_type_id = None, operator_id = None, laboratory_id = None):
+def get_enabled_availabilities(from_datetime = None, to_datetime = None, service_id = None, operator_id = None, location_id = None):
     query = Availability.query.filter(Availability.enabled == True)
-    if exam_type_id:
-        query = query.filter(Availability.exam_type_id == exam_type_id)
+    if service_id:
+        query = query.filter(Availability.service_id == service_id)
     if operator_id:
         query = query.filter(Availability.operator_id == operator_id)
-    if laboratory_id:
-        query = query.filter(Availability.laboratory_id == laboratory_id)
+    if location_id:
+        query = query.filter(Availability.location_id == location_id)
     # esclude le disponibilità che finiscono prima di from_datetime e quelle che iniziano dopo to_datetime
     if from_datetime:
         query = query.filter(Availability.available_to_date >= from_datetime.date())
@@ -26,14 +26,14 @@ def get_enabled_availabilities(from_datetime = None, to_datetime = None, exam_ty
     return query.all()
     
 # recupera le chiusure per laborariorio (se specificato) e in sovrapposizione con date e orari (se specificati)
-def get_laboratory_closures(from_datetime = None, to_datetime = None, laboratory_id = None):
-    query = LaboratoryClosure.query
-    if laboratory_id:
-        query = query.filter(LaboratoryClosure.laboratory_id == laboratory_id)
+def get_location_closures(from_datetime = None, to_datetime = None, location_id = None):
+    query = LocationClosure.query
+    if location_id:
+        query = query.filter(LocationClosure.location_id == location_id)
     if from_datetime:
-        query = query.filter(LaboratoryClosure.end_datetime > from_datetime)
+        query = query.filter(LocationClosure.end_datetime > from_datetime)
     if to_datetime:
-        query = query.filter(LaboratoryClosure.start_datetime < to_datetime)
+        query = query.filter(LocationClosure.start_datetime < to_datetime)
     
     
     return query.all()
@@ -62,15 +62,15 @@ def get_active_appointments(from_datetime=None, to_datetime=None):
     return query.all()
 
 # verifica se il laboratorio è chiuso per un laborio specifico
-def is_laboratory_id_closed(laboratory_closures, laboratory_id, slot_start_datetime, slot_end_datetime):
-    if not laboratory_closures:
+def is_location_id_closed(location_closures, location_id, slot_start_datetime, slot_end_datetime):
+    if not location_closures:
         return False
     else: 
         return any(
-            laboratory_id == laboratory_closure.laboratory_id and
-                slot_start_datetime < laboratory_closure.end_datetime and
-                slot_end_datetime > laboratory_closure.start_datetime
-            for laboratory_closure in laboratory_closures
+            location_id == location_closure.location_id and
+                slot_start_datetime < location_closure.end_datetime and
+                slot_end_datetime > location_closure.start_datetime
+            for location_closure in location_closures
         ) 
 
 # verifica se l'operatore è assente in un intervallo di date e orario
@@ -102,10 +102,10 @@ def is_slot_booked(appointments, availability_id, appointment_date, from_time, t
 def generate_available_slots(
     datetime_from_filter = None, 
     datetime_to_filter = None, 
-    exam_type_id = None,
+    service_id = None,
     operator_id = None,
-    laboratory_id = None,
-    exclude_laboratory_closoure_slots = True, 
+    location_id = None,
+    exclude_location_closoure_slots = True, 
     exclude_operator_abesence_slots = True, 
     exclude_booked_slots= True
     ):
@@ -113,11 +113,11 @@ def generate_available_slots(
     availabilities_slots_dategroup = {}
     
     # Recupera le disponibilità attive con i filtri se applicati
-    availabilities = get_enabled_availabilities(datetime_from_filter, datetime_to_filter, exam_type_id, operator_id, laboratory_id)
+    availabilities = get_enabled_availabilities(datetime_from_filter, datetime_to_filter, service_id, operator_id, location_id)
     
     # se le esclusioni sono attivate recupera le chiusure, le assenze e gli appuntamenti attivi con i filtri se applicati
-    if exclude_laboratory_closoure_slots:
-        laboratory_closures = get_laboratory_closures(datetime_from_filter, datetime_to_filter, laboratory_id)
+    if exclude_location_closoure_slots:
+        location_closures = get_location_closures(datetime_from_filter, datetime_to_filter, location_id)
     if exclude_operator_abesence_slots:
         operator_absences = get_operator_absences(datetime_from_filter, datetime_to_filter, operator_id)
     if exclude_booked_slots:
@@ -164,10 +164,10 @@ def generate_available_slots(
                 
                 slot = {
                     "availability_id": availability.availability_id,
-                    "exam_type_name": availability.exam_type.name,
-                    "laboratory_name": availability.laboratory.name,
-                    "laboratory_address": availability.laboratory.address,
-                    "laboratory_tel_number": availability.laboratory.tel_number,
+                    "service_name": availability.service.name,
+                    "location_name": availability.location.name,
+                    "location_address": availability.location.address,
+                    "location_tel_number": availability.location.tel_number,
                     "operator_name": f"{availability.operator.title} {availability.operator.first_name} {availability.operator.last_name}",
                     "appointment_date":  appointment_date.isoformat(),
                     "appointment_time_start": appointment_time_start.isoformat(timespec='minutes'),
@@ -192,8 +192,8 @@ def generate_available_slots(
                 if exclude_operator_abesence_slots:
                     exclude_conditions.append(is_operator_id_absent(operator_absences, availability.operator_id, slot_start_datetime, slot_end_datetime))
                 # escludi lo slot se il laboratorio è chiuso
-                if exclude_laboratory_closoure_slots:
-                    exclude_conditions.append(is_laboratory_id_closed(laboratory_closures, availability.laboratory_id, slot_start_datetime, slot_end_datetime))
+                if exclude_location_closoure_slots:
+                    exclude_conditions.append(is_location_id_closed(location_closures, availability.location_id, slot_start_datetime, slot_end_datetime))
                 
                 # se uno dei filtri indicati è vero scarta lo slot
                 if any(exclude_conditions):

@@ -1,5 +1,5 @@
 from flask import current_app
-from app.models.model import db, Account, Laboratory, Patient, Availability, Operator, ExamType, LaboratoryClosure, OperatorAbsence, Appointment
+from app.models.model import db, Account, Location, Patient, Availability, Operator, Service, LocationClosure, OperatorAbsence, Appointment
 from app.functions import generate_available_slots
 import uuid
 from datetime import date, time, datetime, timedelta
@@ -11,12 +11,12 @@ def clear_all_tables():
         with db.session.begin_nested():
             Appointment.query.delete()
             OperatorAbsence.query.delete()
-            LaboratoryClosure.query.delete()
+            LocationClosure.query.delete()
             Availability.query.delete()
-            ExamType.query.delete()
+            Service.query.delete()
             Operator.query.delete()
             Patient.query.delete()
-            Laboratory.query.delete()
+            Location.query.delete()
             Account.query.delete()
         db.session.commit()
     except Exception as e:
@@ -122,54 +122,54 @@ def insert_patients_operators(numberof_patients=1, numberof_operators=1):
         current_app.logger.error("Error inserting patients and operators: %s", e)
         return
 
-def insert_laboratories(numberof_laboratories=1):
+def insert_locations(numberof_locations=1):
     
     LOCATION_LIST = ["L'Acquila","Chieti","Pescara","Catanzaro","Firenze","Teramo","Bari","Palermo","Genova","Catania","Brescia","Cosenza","Taranto","Prato","Modena"]
-    MAX_LABORATORIES = len(LOCATION_LIST)
+    MAX_LOCATIONS = len(LOCATION_LIST)
     try:
-        created_laboratories = 0
-        while created_laboratories < numberof_laboratories and created_laboratories < MAX_LABORATORIES:
+        created_locations = 0
+        while created_locations < numberof_locations and created_locations < MAX_LOCATIONS:
             lab_uuid = uuid.uuid4()
             lab_name = f"Laboratorio {random.choice(LOCATION_LIST)}"
             lab_address = f"Via {random.choice(LOCATION_LIST)} {random.randint(1, 100)}"
             lab_tel_number = "+391234567890"
-            laboratory = Laboratory(
-                laboratory_id=lab_uuid,
+            location = Location(
+                location_id=lab_uuid,
                 name=lab_name,
                 address=lab_address,
                 tel_number=lab_tel_number
             )
-            db.session.add(laboratory)
-            created_laboratories += 1
+            db.session.add(location)
+            created_locations += 1
 
     except Exception as e:
-        current_app.logger.error("Error inserting laboratories: %s", e)
+        current_app.logger.error("Error inserting locations: %s", e)
         return
     
-def insert_exam_types(numberof_exam_types=1):
+def insert_services(numberof_services=1):
 
-    EXAM_NAME_LIST = ["Visita Oculistica", "Visita Otorinolaringoiatrica", "Visita Cardiologica", "Visita Dermatologica", "Visita Ginecologica", "Visita Ortopedica", "Visita Pediatria", "Visita Psicologica", "Visita Urologica", "Visita Neurologica", "Visita Endocrinologica"]
-    MAX_EXAM_TYPES = len(EXAM_NAME_LIST)
+    SERVICE_NAME_LIST = ["Visita Oculistica", "Visita Otorinolaringoiatrica", "Visita Cardiologica", "Visita Dermatologica", "Visita Ginecologica", "Visita Ortopedica", "Visita Pediatria", "Visita Psicologica", "Visita Urologica", "Visita Neurologica", "Visita Endocrinologica"]
+    MAX_SERVICES = len(SERVICE_NAME_LIST)
     try:
         
-        created_exam_types = 0
-        for i in range(numberof_exam_types):
-            if created_exam_types >= MAX_EXAM_TYPES:
+        created_services = 0
+        for i in range(numberof_services):
+            if created_services >= MAX_SERVICES:
                 break
             
-            exam_type_uuid = uuid.uuid4()
-            exam_name = EXAM_NAME_LIST[i]
+            service_uuid = uuid.uuid4()
+            service_name = SERVICE_NAME_LIST[i]
             
-            exam_type = ExamType(
-                exam_type_id=exam_type_uuid,
-                name=exam_name
+            service = Service(
+                service_id=service_uuid,
+                name=service_name
                 
                 )
-            db.session.add(exam_type)
-            created_exam_types += 1
+            db.session.add(service)
+            created_services += 1
           
     except Exception as e:
-        current_app.logger.error("Error inserting exam types: %s", e)
+        current_app.logger.error("Error inserting service types: %s", e)
         return
     
 def insert_availabilities(numberof_availabilities=1):
@@ -178,8 +178,8 @@ def insert_availabilities(numberof_availabilities=1):
     AVAILABILITY_START_LIST = [time(8, 0), time(9, 0), time(10, 0), time(11, 0)]
     
     try:
-        exam_types = ExamType.query.all()
-        laboratories = Laboratory.query.all()
+        services = Service.query.all()
+        locations = Location.query.all()
         operators = Operator.query.all()
         
         created_availabilities = 0
@@ -193,8 +193,8 @@ def insert_availabilities(numberof_availabilities=1):
             
             availability = Availability(
                 availability_id=uuid.uuid4(),
-                exam_type_id=random.choice(exam_types).exam_type_id,
-                laboratory_id=random.choice(laboratories).laboratory_id,
+                service_id=random.choice(services).service_id,
+                location_id=random.choice(locations).location_id,
                 operator_id=random.choice(operators).operator_id,
                 available_from_date=available_from_date,
                 available_to_date=available_to_date,
@@ -218,7 +218,7 @@ def insert_lab_closures(numberof_lab_closures=1):
     
         availabilites = Availability.query.all()
         if not availabilites:
-            current_app.logger.warning("No availabilities available, skipping laboratory closures generation.")
+            current_app.logger.warning("No availabilities available, skipping location closures generation.")
             return
 
         created_lab_closures = 0
@@ -227,9 +227,9 @@ def insert_lab_closures(numberof_lab_closures=1):
             availability = random.choice(availabilites)
             start_datetime= datetime.today()
             end_datetime= start_datetime + timedelta(days=random.randint(1, 3)) 
-            closure = LaboratoryClosure(
+            closure = LocationClosure(
                 closure_id=uuid.uuid4(),
-                laboratory_id=availability.laboratory_id,
+                location_id=availability.location_id,
                 start_datetime=start_datetime,
                 end_datetime=end_datetime
             )
@@ -238,7 +238,7 @@ def insert_lab_closures(numberof_lab_closures=1):
             created_lab_closures += 1
 
     except Exception as e:
-        current_app.logger.error("Error inserting laboratory closures: %s", e)
+        current_app.logger.error("Error inserting location closures: %s", e)
         return
         
 def insert_operator_absences(numberof_operator_absences=1):
@@ -274,10 +274,10 @@ def insert_appointments(numberof_appointments=1, max_not_founds=10):
     try:
         
         patients = Patient.query.all()
-        exam_types = ExamType.query.all()
+        services = Service.query.all()
         
-        if not patients or not exam_types:
-            current_app.logger.warning("No patients or exam_types available, skipping appointments generation.")
+        if not patients or not services:
+            current_app.logger.warning("No patients or services available, skipping appointments generation.")
             return
         
         created_appointments = 0
@@ -289,16 +289,16 @@ def insert_appointments(numberof_appointments=1, max_not_founds=10):
     
         while created_appointments < numberof_appointments and not_found < max_not_founds:
             
-            #exam_type = random.choice(exam_types)
+            #service = random.choice(services)
             patient = random.choice(patients)
             
             grouped_slots = generate_available_slots(
                 datetime_from_filter=datetime_from_filter,
                 datetime_to_filter=datetime_to_filter,
-                exam_type_id=None,
+                service_id=None,
                 operator_id=None,
-                laboratory_id=None,
-                exclude_laboratory_closoure_slots=True,
+                location_id=None,
+                exclude_location_closoure_slots=True,
                 exclude_operator_abesence_slots=True,
                 exclude_booked_slots=True
             )
@@ -348,14 +348,14 @@ def test_generated_appointments():
             return False
 
         all_generable_slots = generate_available_slots(
-            exclude_laboratory_closoure_slots=False,
+            exclude_location_closoure_slots=False,
             exclude_operator_abesence_slots=False,
             exclude_booked_slots=False
         )
 
         available_slots = generate_available_slots(
             exclude_booked_slots=True,
-            exclude_laboratory_closoure_slots=True,
+            exclude_location_closoure_slots=True,
             exclude_operator_abesence_slots=True
         )
 
@@ -366,7 +366,7 @@ def test_generated_appointments():
         for appointment in appointments:
             
             availability = Availability.query.get(appointment.availability_id)
-            laboratory_closures = LaboratoryClosure.query.filter_by(laboratory_id=availability.laboratory_id).all()
+            location_closures = LocationClosure.query.filter_by(location_id=availability.location_id).all()
             operator_absences = OperatorAbsence.query.filter_by(operator_id=availability.operator_id).all()
 
             slot_datime_start = datetime.combine(appointment.appointment_date,appointment.appointment_time_start)
@@ -384,10 +384,10 @@ def test_generated_appointments():
             assert slot_datime_start < slot_datime_end, f"appointment_id {appointment.appointment_id} slot start is after slot end"
             
             # Verifica che lo slot non sia in sovrapposizione a chiusure del laboratorio o assenze dell'operatore
-            if laboratory_closures:
-                for closure in laboratory_closures:
+            if location_closures:
+                for closure in location_closures:
                     assert slot_datime_end <= closure.start_datetime or slot_datime_start >= closure.end_datetime, \
-                    f"appointment_id {appointment.appointment_id} overlap laboratory_closure_id {closure.closure_id}"
+                    f"appointment_id {appointment.appointment_id} overlap location_closure_id {closure.closure_id}"
             
             # Verifica che lo slot non sia in sovrapposizione a chiusure del laboratorio o assenze dell'operatore
             if operator_absences:        
@@ -432,8 +432,8 @@ def insert_demo_data():
         # rispettare gli step di inserimento per evitare violazioni di chiave esterna
         with db.session.begin_nested():
             insert_patients_operators(10, 10)
-            insert_laboratories(10)
-            insert_exam_types(2)
+            insert_locations(10)
+            insert_services(2)
             insert_availabilities(5)
             insert_lab_closures(0)
             insert_operator_absences(0)
@@ -451,10 +451,10 @@ def insert_demo_data():
         current_app.logger.info("Demo data inserted successfully Totals:")
         current_app.logger.info("Patients: %s", len(Patient.query.all()))
         current_app.logger.info("Operators: %s", len(Operator.query.all()))
-        current_app.logger.info("Laboratories: %s", len(Laboratory.query.all()))
-        current_app.logger.info("ExamTypes: %s", len(ExamType.query.all()))
+        current_app.logger.info("Locations: %s", len(Location.query.all()))
+        current_app.logger.info("Services: %s", len(Service.query.all()))
         current_app.logger.info("Availabilities: %s", len(Availability.query.all()))
-        current_app.logger.info("LabClosures: %s", len(LaboratoryClosure.query.all()))
+        current_app.logger.info("LabClosures: %s", len(LocationClosure.query.all()))
         current_app.logger.info("OperatorAbsences: %s", len(OperatorAbsence.query.all()))
         current_app.logger.info("Appointments: %s", len(appointments))
 

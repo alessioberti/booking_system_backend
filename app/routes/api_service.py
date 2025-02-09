@@ -1,4 +1,4 @@
-from app.models.model import Availability, ExamType, Operator, Laboratory
+from app.models.model import Availability, Service, Operator, Location
 from flask import jsonify
 from app.functions import generate_available_slots
 from datetime import datetime, time, timedelta, timezone
@@ -26,33 +26,33 @@ def parse_datetime(dt_str: str) -> datetime:
         return dt
     return dt
 
-@bp.route('/api/v1/exams', methods=['GET'])
+@bp.route('/api/v1/services', methods=['GET'])
 @jwt_required()
-def get_exam_types():
+def get_services():
     
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
     
-    exam_types_query= ExamType.query.join(Availability).filter(Availability.enabled == True).paginate(page=page, per_page=per_page, error_out=True)
+    services_query= Service.query.join(Availability).filter(Availability.enabled == True).paginate(page=page, per_page=per_page, error_out=True)
 
     return jsonify({
-        "page": exam_types_query.page,
-        "total": exam_types_query.total,
-        "pages": exam_types_query.pages,
-        "data": [exam_type.to_dict() for exam_type in exam_types_query.items]
+        "page": services_query.page,
+        "total": services_query.total,
+        "pages": services_query.pages,
+        "data": [service.to_dict() for service in services_query.items]
     })
 
-@bp.route('/api/v1/exams/<exam_type_id>', methods=['GET'])
+@bp.route('/api/v1/services/<service_id>', methods=['GET'])
 @jwt_required()
-def get_exam_type(exam_type_id):
-    exam_type = ExamType.query.get(UUID(exam_type_id))
-    if exam_type:
-        return jsonify(exam_type.to_dict())
-    return jsonify({"error": "Exam type not found"}), 404
+def get_service(service_id):
+    service = Service.query.get(UUID(service_id))
+    if service:
+        return jsonify(service.to_dict())
+    return jsonify({"error": "Service type not found"}), 404
 
-@bp.route('/api/v1/exams/<exam_type_id>/available-slots', methods=['GET'])
+@bp.route('/api/v1/services/<service_id>/available-slots', methods=['GET'])
 @jwt_required()
-def get_exam_type_availabilities(exam_type_id):
+def get_service_availabilities(service_id):
 
     # imposto i limiti per la data di prenotazione e la data di fine prenotazione 
     # la data di prenotazione non può essere inferiore alla data attuale
@@ -64,9 +64,9 @@ def get_exam_type_availabilities(exam_type_id):
 
     try:
         # recupera i parametri dalla query string e li converte in UUID
-        exam_type_id = UUID(exam_type_id)
+        service_id = UUID(service_id)
         operator_id = UUID(request.args.get('operator_id')) if request.args.get('operator_id') else None
-        laboratory_id = UUID(request.args.get('laboratory_id')) if request.args.get('laboratory_id') else None
+        location_id = UUID(request.args.get('location_id')) if request.args.get('location_id') else None
 
         # se è stata fornita una data specifica per restituire gli slot di una data specifica
         page_date_str = request.args.get('page_date')
@@ -102,7 +102,7 @@ def get_exam_type_availabilities(exam_type_id):
     
     # genera gli slot disponibili
 
-    available_slots = generate_available_slots(datetime_from_filter, datetime_to_filter, exam_type_id, operator_id, laboratory_id)
+    available_slots = generate_available_slots(datetime_from_filter, datetime_to_filter, service_id, operator_id, location_id)
  
     available_dates_count = len(available_slots.keys())
     available_slots_count = sum(len(available_slots[date]) for date in available_slots.keys())
@@ -113,14 +113,14 @@ def get_exam_type_availabilities(exam_type_id):
     # genera i filtri per la selezione degli operatori e dei laboratori    
     # genera la lista di operatori e laboratori disponibili per l'esame selezionato senza duplicati
     # filtrali uno rispetto all'altro se sono stati forniti come parametri 
-    distinct_laboratories_query = Laboratory.query.join(Availability).filter(Availability.exam_type_id == exam_type_id)
+    distinct_locations_query = Location.query.join(Availability).filter(Availability.service_id == service_id)
     if operator_id:
-        distinct_laboratories_query = distinct_laboratories_query.filter(Availability.operator_id == operator_id)
-    distinct_laboratories = distinct_laboratories_query.distinct()
+        distinct_locations_query = distinct_locations_query.filter(Availability.operator_id == operator_id)
+    distinct_locations = distinct_locations_query.distinct()
 
-    distinct_operators_query = Operator.query.join(Availability).filter(Availability.exam_type_id == exam_type_id)
-    if laboratory_id:
-        distinct_operators_query = distinct_operators_query.filter(Availability.laboratory_id == laboratory_id)
+    distinct_operators_query = Operator.query.join(Availability).filter(Availability.service_id == service_id)
+    if location_id:
+        distinct_operators_query = distinct_operators_query.filter(Availability.location_id == location_id)
     distinct_operators = distinct_operators_query.distinct()
     
     if not available_slots:
@@ -152,7 +152,7 @@ def get_exam_type_availabilities(exam_type_id):
 
     return jsonify({
                 "operators": [distinct_operator.to_dict() for distinct_operator in distinct_operators],
-                "laboratories": [distinct_laboratory.to_dict() for distinct_laboratory in distinct_laboratories],
+                "locations": [distinct_location.to_dict() for distinct_location in distinct_locations],
                 "date_list": date_list,
                 "slots": date_slots,
                 "next_cursor_datetime": next_cursor_datetime,

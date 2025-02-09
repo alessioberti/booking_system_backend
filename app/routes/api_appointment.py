@@ -1,4 +1,4 @@
-from app.models.model import Appointment, ExamType, Laboratory, Patient, Availability
+from app.models.model import Appointment, Service, Location, Patient, Availability
 from flask import jsonify
 from flask import request
 from uuid import UUID
@@ -18,7 +18,7 @@ def get_appointments():
 
     # naviga tra le tabelle per ottenere i dati relativi agli appuntamenti
     appointments_query = Appointment.query \
-    .join(Availability).join(ExamType).join(Laboratory).join(Patient) \
+    .join(Availability).join(Service).join(Location).join(Patient) \
     .filter(Appointment.account_id == current_user) \
     .paginate(page=page, per_page=per_page, error_out=True)
 
