@@ -26,8 +26,7 @@ def parse_datetime(dt_str: str) -> datetime:
         return dt
     return dt
 
-
-@bp.route('/api/v1/exam', methods=['GET'])
+@bp.route('/api/v1/exams', methods=['GET'])
 @jwt_required()
 def get_exam_types():
     
@@ -43,7 +42,7 @@ def get_exam_types():
         "data": [exam_type.to_dict() for exam_type in exam_types_query.items]
     })
 
-@bp.route('/api/v1/exam/<exam_type_id>', methods=['GET'])
+@bp.route('/api/v1/exams/<exam_type_id>', methods=['GET'])
 @jwt_required()
 def get_exam_type(exam_type_id):
     exam_type = ExamType.query.get(UUID(exam_type_id))
@@ -51,7 +50,7 @@ def get_exam_type(exam_type_id):
         return jsonify(exam_type.to_dict())
     return jsonify({"error": "Exam type not found"}), 404
 
-@bp.route('/api/v1/exam/<exam_type_id>/available-slots', methods=['GET'])
+@bp.route('/api/v1/exams/<exam_type_id>/available-slots', methods=['GET'])
 @jwt_required()
 def get_exam_type_availabilities(exam_type_id):
 
@@ -73,7 +72,7 @@ def get_exam_type_availabilities(exam_type_id):
         page_date_str = request.args.get('page_date')
         if page_date_str:
             try:
-                page_date = datetime.fromisoformat(page_date_str)
+                page_date = datetime.strptime(page_date_str, "%Y-%m-%d")
             except:
                 return  jsonify({"error": "Invalid date format"}), 400
         else:

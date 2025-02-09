@@ -312,10 +312,10 @@ def insert_appointments(numberof_appointments=1, max_not_founds=10):
             slots_in_that_date = grouped_slots[random_date_str]
             random_slot = random.choice(slots_in_that_date)
 
-            appointment_date = datetime.fromisoformat(random_slot["availability_date"]).date()
+            appointment_date = datetime.strptime(random_slot["appointment_date"], "%Y-%m-%d")
 
-            time_start = datetime.strptime(random_slot["availability_slot_start"], "%H:%M").time()
-            time_end   = datetime.strptime(random_slot["availability_slot_end"],   "%H:%M").time()
+            time_start = datetime.strptime(random_slot["appointment_time_start"], "%H:%M").time()
+            time_end   = datetime.strptime(random_slot["appointment_time_end"],   "%H:%M").time()
 
             appointment = Appointment(
                 appointment_id=uuid.uuid4(),
@@ -397,9 +397,9 @@ def test_generated_appointments():
             
             # Verifica che lo slot sia stato generato correttamente
             is_slot_into_slots_without_filter = any(
-                slot.get("availability_date") == appointment.appointment_date.isoformat() and
-                slot.get("availability_slot_start") == appointment.appointment_time_start.strftime("%H:%M") and
-                slot.get("availability_slot_end") == appointment.appointment_time_end.strftime("%H:%M")
+                slot.get("appointment_date") == appointment.appointment_date.isoformat() and
+                slot.get("appointment_time_start") == appointment.appointment_time_start.strftime("%H:%M") and
+                slot.get("appointment_time_end") == appointment.appointment_time_end.strftime("%H:%M")
                 for slot in all_generable_slots.get(appointment.appointment_date.isoformat(), [])
             )
             
@@ -407,9 +407,9 @@ def test_generated_appointments():
 
             # Verifica che l'appuntamento non sia presente tra gli slot disponibili
             is_bookable_slot_already_booked = any(
-                slot.get("availability_date") == appointment.appointment_date.isoformat() and
-                slot.get("availability_slot_start") == appointment.appointment_time_start.strftime("%H:%M") and
-                slot.get("availability_slot_end") == appointment.appointment_time_end.strftime("%H:%M") and
+                slot.get("appointment_date") == appointment.appointment_date.isoformat() and
+                slot.get("appointment_time_start") == appointment.appointment_time_start.strftime("%H:%M") and
+                slot.get("appointment_time_end") == appointment.appointment_time_end.strftime("%H:%M") and
                 slot.get("availability_id") == appointment.availability_id
                 for slot in available_slots.get(appointment.appointment_date.isoformat(), [])
             )

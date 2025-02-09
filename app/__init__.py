@@ -34,16 +34,29 @@ def create_app(config_class=Config):
             app.logger.info("Testing slot generator")
             insert_demo_data_with_tests(1)
     
-        # inserisci account di admin se non esiste
-
-        if not Account.query.filter_by(email=app.config['ADMIN_EMAIL']).first():
-            new_admin = Account(
-                email=app.config['ADMIN_EMAIL'],
-                password_hash=generate_password_hash(app.config['ADMIN_PASSWORD']),
-                is_admin=True
-            )
-            db.session.add(new_admin)
-            db.session.commit()
+        # inserisci account di admin se non esiste usando il metodo create_new (crea anche il paziente)
+        
+        try:
+            if  Account.query.filter_by(email=app.config['ADMIN_EMAIL']).first():
+                    admin = Account(
+                            email=app.config['ADMIN_EMAIL'],
+                            password_hash = generate_password_hash(app.config['ADMIN_PASSWORD']),
+                            is_admin=True
+                        )
+                    admin.create_new(
+                            first_name="Admin",
+                            last_name="Admin",
+                            tel_number=None,
+                            fiscal_code=None,
+                            birth_date=None ,
+                        )
+                    db.session.commit()
+                    app.logger.info("Admin %s account created", app.config['ADMIN_EMAIL'])
+            else:
+                app.logger.info("Admin account already exists")
+        except Exception as e:
+            app.logger.error(e)
+            db.session.rollback()
 
     # Registrazione delle route tramite blueprint
 
