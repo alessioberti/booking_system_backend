@@ -74,7 +74,7 @@ def insert_patients_operators(numberof_patients=1, numberof_operators=1):
                 account_uuid = uuid.uuid4()
                 account = Account(
                     account_id=account_uuid,
-                    email= f"{first_name.lower()}.{last_name.lower()}@gmail.com",
+                    username= f"{first_name.lower()}.{last_name.lower()}",
                     password_hash="hashed_password",
                     enabled=True,
                     is_operator= True if created_operators < numberof_operators else False
@@ -103,7 +103,7 @@ def insert_patients_operators(numberof_patients=1, numberof_operators=1):
                         is_default=True,
                         first_name=first_name,
                         last_name=last_name,
-                        email=account.email,
+                        email=f"{first_name.lower()}.{last_name.lower()}@gmail.com",
                         tel_number="+391234567890",
                         fiscal_code="FISCALCODE123456",
                         birth_date=datetime(

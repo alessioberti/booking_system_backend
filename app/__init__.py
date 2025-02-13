@@ -36,25 +36,27 @@ def create_app(config_class=Config):
     
         # inserisci account di admin se non esiste usando il metodo create_new (crea anche il paziente)
         try:
-            existing_admin = Account.query.filter_by(email=app.config['ADMIN_EMAIL']).first()
+            existing_admin = Account.query.filter_by(username=app.config['ADMIN_USERNAME']).first()
             if  existing_admin is None:
                     admin = Account(
-                            email=app.config['ADMIN_EMAIL'],
+                            username=app.config['ADMIN_USERNAME'],
                             password_hash = generate_password_hash(app.config['ADMIN_PASSWORD']),
                             is_admin=True
                         )
                     admin.create_new(
                             first_name="Admin",
                             last_name="Admin",
+                            email=app.config['ADMIN_EMAIL'],
                             tel_number=None,
                             fiscal_code=None,
                             birth_date=None ,
                         )
                     db.session.commit()
-                    app.logger.info("Admin %s account created", app.config['ADMIN_EMAIL'])
+                    app.logger.info("Admin account created")
             else:
                 app.logger.info("Admin account already exists")
         except Exception as e:
+            app.logger.error("Error creating admin account")
             app.logger.error(e)
             db.session.rollback()
 

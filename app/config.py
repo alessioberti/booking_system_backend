@@ -10,6 +10,7 @@ if os.path.exists(env_path):
 class Config:
     LOG_LEVEL = "INFO"
     ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL")
+    ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME")
     ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
     SECRET_KEY = os.environ.get('SECRET_KEY')
     POSTGRES_USER = os.environ.get("POSTGRES_USER")

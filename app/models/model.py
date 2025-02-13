@@ -8,7 +8,7 @@ class Account(db.Model):
     __tablename__ = "account"
 
     account_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
-    email = db.Column(db.String(254), unique=True, nullable=False)
+    username = db.Column(db.String(254), unique=True, nullable=False)
     password_hash = db.Column(db.String(512), nullable=False)
     enabled = db.Column(db.Boolean, default=True, nullable=False)
     failed_login_count = db.Column(db.Integer, default=0)
@@ -25,20 +25,24 @@ class Account(db.Model):
     # Metodi
 
     # crea account e paziente di default
-    def create_new(self ,first_name,last_name,tel_number,fiscal_code,birth_date):
+    def create_new(self, email,first_name,last_name,tel_number,fiscal_code,birth_date):
             
             db.session.add(self)
             # usa il flush per ottenere l'id dell'account
             db.session.flush()
             current_app.logger.info("Account created %s", self.account_id)
+
+            # converti la data di nascita in date se presente
+            birth_date_date = (datetime.fromisoformat(birth_date)).date() if birth_date else None
+            
             default_patient = Patient(
                 account_id=self.account_id,
                 first_name=first_name,
                 last_name=last_name,
-                email=self.email,
+                email=email,
                 tel_number=tel_number,
                 fiscal_code=fiscal_code,
-                birth_date=birth_date,
+                birth_date= birth_date_date,
                 is_default=True # il primo paziente creato è il paziente di default
             )
             db.session.add(default_patient)
@@ -46,7 +50,7 @@ class Account(db.Model):
     def to_dict(self):
         return {
             "account_id": self.account_id,
-            "email": self.email,
+            "username": self.username,
         }
    
 class Patient(db.Model):
@@ -229,6 +233,7 @@ class Appointment(db.Model):
             "info": self.info,
             "rejected": self.rejected,
             "service_name": self.availability.service.name if self.availability.service else None,
+            "service_id": self.availability.service.service_id if self.availability.service else None,
             "location_name": self.availability.location.name if self.availability.location else None,
             "location_address": self.availability.location.address if self.availability.location else None,
             "location_tel_number": self.availability.location.tel_number if self.availability.location else None,
