@@ -5,9 +5,25 @@ from app import db
 import re
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime, timedelta
-from flask_jwt_extended import create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies, create_refresh_token, set_refresh_cookies
+from flask_jwt_extended import create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies, create_refresh_token, set_refresh_cookies, get_jwt
 from flask import current_app
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+
+# Refresh del token JWT prima della scadenza
+@bp.after_request
+def refresh_expiring_jwts(response):
+    try:
+        exp_timestamp = get_jwt()["exp"]
+        now = datetime.now(timezone.utc)
+        target_timestamp = datetime.timestamp(now + timedelta(minutes=30))
+        if target_timestamp > exp_timestamp:
+            access_token = create_access_token(identity=get_jwt_identity())
+            set_access_cookies(response, access_token)
+        return response
+    except (RuntimeError, KeyError):
+        return response
+
 
 # Restituisce l'account dell'utente corrente utilizzato per il refresh del token JWT
 @bp.route('/api/v1/account', methods=['GET'])
@@ -123,7 +139,7 @@ def login():
     
     # Controlla se ci sono troppi tentativi di accesso falliti
     if (account.failed_login_count >= 5) and ((datetime.now() - account.last_failed_login) < timedelta(minutes=5)):
-        return jsonify({"error": "Too many login attempts retry 5 minutes later"}), 401
+        return jsonify({"error": "Too many login attempts retry 5 minutes later"}), 409
     
     if check_password_hash(account.password_hash, data["password"]):
         
@@ -134,11 +150,8 @@ def login():
         db.session.commit()
         # Genera il token JWT
         access_token = create_access_token(identity=account.account_id)
-        refresh_token = create_refresh_token(identity=account.account_id)
-
-        resp = make_response({"message": "Logged in"})
+        resp = make_response(account.to_dict())
         set_access_cookies(resp, access_token)
-        set_refresh_cookies(resp, refresh_token)
         return resp
     
     else:
@@ -152,13 +165,4 @@ def login():
 def logout():
     resp = make_response({"message": "Logged out"})
     unset_jwt_cookies(resp)
-    return resp
-
-@bp.route('/api/v1/refresh', methods=['POST'])
-@jwt_required(refresh=True)
-def refresh():
-    current_user = get_jwt_identity()
-    access_token = create_access_token(identity=current_user)
-    resp = make_response({"message": "Token refreshed"})
-    set_access_cookies(resp, access_token)
     return resp

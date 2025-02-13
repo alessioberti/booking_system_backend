@@ -67,8 +67,6 @@ class Patient(db.Model):
     account = db.relationship("Account", back_populates="patient")
     appointment = db.relationship("Appointment", back_populates="patient")
 
-    # Metodi
-
     def to_dict(self):
         return {
             "patient_id": self.patient_id,

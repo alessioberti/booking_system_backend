@@ -105,8 +105,8 @@ def generate_available_slots(
     service_id = None,
     operator_id = None,
     location_id = None,
-    exclude_location_closoure_slots = True, 
-    exclude_operator_abesence_slots = True, 
+    exclude_location_closure_slots = True, 
+    exclude_operator_absence_slots = True, 
     exclude_booked_slots= True
     ):
     
@@ -116,9 +116,9 @@ def generate_available_slots(
     availabilities = get_enabled_availabilities(datetime_from_filter, datetime_to_filter, service_id, operator_id, location_id)
     
     # se le esclusioni sono attivate recupera le chiusure, le assenze e gli appuntamenti attivi con i filtri se applicati
-    if exclude_location_closoure_slots:
+    if exclude_location_closure_slots:
         location_closures = get_location_closures(datetime_from_filter, datetime_to_filter, location_id)
-    if exclude_operator_abesence_slots:
+    if exclude_operator_absence_slots:
         operator_absences = get_operator_absences(datetime_from_filter, datetime_to_filter, operator_id)
     if exclude_booked_slots:
         appointments = get_active_appointments(datetime_from_filter, datetime_to_filter)
@@ -189,10 +189,10 @@ def generate_available_slots(
                 if exclude_booked_slots:
                     exclude_conditions.append(is_slot_booked(appointments, availability.availability_id, appointment_date, appointment_time_start, appointment_time_end))
                 # escludi lo slot se l'operatore è assente
-                if exclude_operator_abesence_slots:
+                if exclude_operator_absence_slots:
                     exclude_conditions.append(is_operator_id_absent(operator_absences, availability.operator_id, slot_start_datetime, slot_end_datetime))
                 # escludi lo slot se il laboratorio è chiuso
-                if exclude_location_closoure_slots:
+                if exclude_location_closure_slots:
                     exclude_conditions.append(is_location_id_closed(location_closures, availability.location_id, slot_start_datetime, slot_end_datetime))
                 
                 # se uno dei filtri indicati è vero scarta lo slot

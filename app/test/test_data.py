@@ -298,8 +298,8 @@ def insert_appointments(numberof_appointments=1, max_not_founds=10):
                 service_id=None,
                 operator_id=None,
                 location_id=None,
-                exclude_location_closoure_slots=True,
-                exclude_operator_abesence_slots=True,
+                exclude_location_closure_slots=True,
+                exclude_operator_absence_slots=True,
                 exclude_booked_slots=True
             )
             
@@ -312,7 +312,7 @@ def insert_appointments(numberof_appointments=1, max_not_founds=10):
             slots_in_that_date = grouped_slots[random_date_str]
             random_slot = random.choice(slots_in_that_date)
 
-            appointment_date = datetime.strptime(random_slot["appointment_date"], "%Y-%m-%d")
+            appointment_date = datetime.strptime(random_slot["appointment_date"], "%Y-%m-%d").date()
 
             time_start = datetime.strptime(random_slot["appointment_time_start"], "%H:%M").time()
             time_end   = datetime.strptime(random_slot["appointment_time_end"],   "%H:%M").time()
@@ -348,15 +348,15 @@ def test_generated_appointments():
             return False
 
         all_generable_slots = generate_available_slots(
-            exclude_location_closoure_slots=False,
-            exclude_operator_abesence_slots=False,
+            exclude_location_closure_slots=False,
+            exclude_operator_absence_slots=False,
             exclude_booked_slots=False
         )
 
         available_slots = generate_available_slots(
             exclude_booked_slots=True,
-            exclude_location_closoure_slots=True,
-            exclude_operator_abesence_slots=True
+            exclude_location_closure_slots=True,
+            exclude_operator_absence_slots=True
         )
 
         if not all_generable_slots:
