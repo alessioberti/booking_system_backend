@@ -8,6 +8,7 @@ from app.routes import bp
 from flask import current_app
 from flask_jwt_extended import jwt_required
 
+
 # funzioni per ottenere il primo giorno del mese successivo e del mese precedente
 # le date sono impostate a mezzanotte per forzare un limite inclusivo per la data di inizio e esclusivo per la data di fine
 def first_day_of_next_month(dt: datetime) -> datetime:
@@ -32,9 +33,16 @@ def get_services():
     
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
+    search = request.args.get('search', '', type=str)
     
-    services_query= Service.query.join(Availability).filter(Availability.enabled == True).paginate(page=page, per_page=per_page, error_out=True)
 
+    # se è stato fornito un parametro di ricerca filtra i servizi per nome
+    services_query = Service.query
+    if search:
+        services_query = services_query.filter(Service.name.ilike(f"%{search}%"))
+    
+    services_query = services_query.order_by(Service.name.asc()).paginate(page=page, per_page=per_page, error_out=True)    
+    
     return jsonify({
         "page": services_query.page,
         "total": services_query.total,
@@ -69,14 +77,7 @@ def get_service_availabilities(service_id):
         location_id = UUID(request.args.get('location_id')) if request.args.get('location_id') else None
 
         # se è stata fornita una data specifica per restituire gli slot di una data specifica
-        page_date_str = request.args.get('page_date')
-        if page_date_str:
-            try:
-                page_date = datetime.strptime(page_date_str, "%Y-%m-%d")
-            except:
-                return  jsonify({"error": "Invalid date format"}), 400
-        else:
-            page_date = None
+        page_date_str = request.args.get('page_date') if request.args.get('page_date') else None
 
         # imposto i cursori per la paginazione se la data arriva con un timezone la converto in UTC
         datetime_from_filter = parse_datetime(request.args.get('datetime_from_filter')) if request.args.get('datetime_from_filter') else MIN_RESERVATION_DATETIME
@@ -130,11 +131,15 @@ def get_service_availabilities(service_id):
         # se è sono stati genrati slot per il mese corrent oordina le date e popola slots con la prima data disponibile
         # essendo date isoformat posso ordinarlare senza convertirle in datetime
         date_list = sorted(available_slots.keys())
-        date_slots = available_slots[date_list[0]]
+        
 
-    # se è stata fornita una data specifica restituisce gli slot per quella data
-    if page_date and page_date.isoformat() in date_list:
-        date_slots = available_slots[page_date.isoformat()]
+    # se è stata fornita una data specifica restituisce gli slot per quella data altrimenti restituisce gli slot per la prima data disponibile
+    if not page_date_str and len(date_list) > 0:
+        date_slots = available_slots[date_list[0]]
+    elif page_date_str in date_list:    
+        date_slots = available_slots[page_date_str]
+    else:
+        date_slots = []
 
     # calcola i cursori per la paginazione non considera solo il mese e l'anno per poter portare avanti e indietro 
     # il cursore nei mesi di MIN_RESERVATION_DATETIME e RESERVATION_DATETIME_LIMIT

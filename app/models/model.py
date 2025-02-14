@@ -140,11 +140,14 @@ class Service(db.Model):
     availability = db.relationship("Availability", back_populates="service")
 
     # Metodi
+
+    # restituisce un dizionario con i dati dell'esame e un flag per indicare se ci sono disponibilità attive
     def to_dict(self):
         return {
             "service_id": self.service_id,
             "name": self.name,
             "description": self.description,
+            "has_enabled_availability": any(av.enabled for av in self.availability)
         }
 
 class Operator(db.Model):

@@ -10,20 +10,6 @@ from flask import current_app
 from datetime import datetime, timedelta, timezone
 from app.functions.validate_form_data import validate_data
 
-# Refresh del token JWT prima della scadenza
-@bp.after_request
-def refresh_expiring_jwts(response):
-    try:
-        exp_timestamp = get_jwt()["exp"]
-        now = datetime.now(timezone.utc)
-        target_timestamp = datetime.timestamp(now + timedelta(minutes=30))
-        if target_timestamp > exp_timestamp:
-            access_token = create_access_token(identity=get_jwt_identity())
-            set_access_cookies(response, access_token)
-        return response
-    except (RuntimeError, KeyError):
-        return response
-
 # Restituisce l'account dell'utente corrente utilizzato per il refresh del token JWT
 @bp.route('/api/v1/account', methods=['GET'])
 @jwt_required()
@@ -139,8 +125,8 @@ def logout():
 def change_password():
     current_user = get_jwt_identity()
     data = request.json
-    if not validate_data(data):
-        return jsonify({"error": "Missing or Invalid data"}), 400
+    if not data:
+        return jsonify({"error": "Missing data"}), 400
     
     account = Account.query.get(current_user)
     if check_password_hash(account.password_hash, data["password"]):

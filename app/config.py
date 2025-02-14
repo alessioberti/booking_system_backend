@@ -29,6 +29,8 @@ class Config:
     JWT_COOKIE_CSRF_PROTECT = True
     JWT_COOKIE_SECURE = True
     JWT_COOKIE_SAMESITE = 'Lax'
+    JWT_REFRESH_THRESHOLD_MINUTES = 30
     DEMO_DATA = True
     TEST_DATA = True
     FRONTEND_URL = os.environ.get("FRONTEND_URL")
+  

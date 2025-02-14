@@ -5,6 +5,18 @@ import uuid
 from datetime import date, time, datetime, timedelta
 import random
 from werkzeug.security import generate_password_hash
+
+NUMBER_OF_PATIENTS = 10
+NUMBER_OF_OPERATORS = 10
+NUMBER_OF_LOCATIONS = 10
+NUMBER_OF_SERVICES = 15
+NUMBER_OF_AVAILABILITIES = 10
+NUMBER_OF_LAB_CLOSURES = 3
+NUMBER_OF_OPERATOR_ABSENCES = 3
+NUMBER_OF_APPOINTMENTS = 50
+
+NUMBER_OF_TESTS = 1
+
 def clear_all_tables():
     try:
         # cancella tutte le righe delle tabelle in ordine inverso per evitare violazioni di chiave esterna
@@ -431,13 +443,13 @@ def insert_demo_data():
         clear_all_tables()
         # rispettare gli step di inserimento per evitare violazioni di chiave esterna
         with db.session.begin_nested():
-            insert_patients_operators(10, 10)
-            insert_locations(10)
-            insert_services(2)
-            insert_availabilities(5)
-            insert_lab_closures(0)
-            insert_operator_absences(0)
-            insert_appointments(10, 200)
+            insert_patients_operators(NUMBER_OF_PATIENTS, NUMBER_OF_OPERATORS)
+            insert_locations(NUMBER_OF_LOCATIONS)
+            insert_services(NUMBER_OF_SERVICES)
+            insert_availabilities(NUMBER_OF_AVAILABILITIES)
+            insert_lab_closures(NUMBER_OF_LAB_CLOSURES)
+            insert_operator_absences(NUMBER_OF_OPERATOR_ABSENCES)
+            insert_appointments(NUMBER_OF_APPOINTMENTS, 200)
 
         db.session.commit()
     except Exception as e:
@@ -460,7 +472,7 @@ def insert_demo_data():
 
         db.session.close()
 
-def insert_demo_data_with_tests(number_of_test = 1):
+def insert_demo_data_with_tests(number_of_test = NUMBER_OF_TESTS):
     
     try:
         for i in range(number_of_test):
@@ -468,7 +480,7 @@ def insert_demo_data_with_tests(number_of_test = 1):
             insert_demo_data()
             if test_generated_appointments() == False:
                 current_app.logger.error("Test failed")
-                return
+                raise RuntimeError("Failed test slot generator") 
     except Exception as e:
         current_app.logger.error("Error inserting demo data with tests: %s", e)
-        return
+        raise

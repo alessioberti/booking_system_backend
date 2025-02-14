@@ -1,4 +1,6 @@
 from flask import Flask
+from flask_jwt_extended import get_jwt, create_access_token, get_jwt_identity, set_access_cookies
+from datetime import datetime, timezone, timedelta
 from app.config import Config
 from app.extensions import db, jwt
 from flask_cors import CORS
@@ -20,7 +22,7 @@ def create_app(config_class=Config):
 
     # Creazione del database e inserimento dei dati di test in base alla configurazione
     with app.app_context():
-        
+
         db.create_all()
         app.logger.info("Database created")
        
@@ -32,7 +34,7 @@ def create_app(config_class=Config):
         elif app.config['TEST_DATA']:
             from app.test import insert_demo_data_with_tests
             app.logger.info("Testing slot generator")
-            insert_demo_data_with_tests(1)
+            insert_demo_data_with_tests()  
     
         # inserisci account di admin se non esiste usando il metodo create_new (crea anche il paziente)
         try:
@@ -66,5 +68,19 @@ def create_app(config_class=Config):
     app.register_blueprint(routes_bp)
     app.logger.info(app.url_map)
     
+    # Refresh automatico del token JWT
+    @app.after_request
+    def refresh_expiring_jwts(response):
+        try:
+            exp_timestamp = get_jwt()["exp"]
+            now = datetime.now(timezone.utc)
+            target_timestamp = datetime.timestamp(now + timedelta(minutes=app.config.get('JWT_REFRESH_THRESHOLD_MINUTES', 30)))
+            if target_timestamp > exp_timestamp:
+                access_token = create_access_token(identity=get_jwt_identity())
+                set_access_cookies(response, access_token)
+            return response
+        except (RuntimeError, KeyError):
+            return response
+
     return app
 
