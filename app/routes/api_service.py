@@ -33,9 +33,8 @@ def get_services():
     
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
-    search = request.args.get('search', '', type=str)
+    search = request.args.get('search', type=str,)
     
-
     # se è stato fornito un parametro di ricerca filtra i servizi per nome
     services_query = Service.query
     if search:
@@ -73,15 +72,18 @@ def get_service_availabilities(service_id):
     try:
         # recupera i parametri dalla query string e li converte in UUID
         service_id = UUID(service_id)
-        operator_id = UUID(request.args.get('operator_id')) if request.args.get('operator_id') else None
-        location_id = UUID(request.args.get('location_id')) if request.args.get('location_id') else None
+        operator_id = request.args.get('operator_id', type=UUID)
+        location_id = request.args.get('location_id', type=UUID)
 
         # se è stata fornita una data specifica per restituire gli slot di una data specifica
-        page_date_str = request.args.get('page_date') if request.args.get('page_date') else None
+        page_date_str = request.args.get('page_date', type=str)
 
         # imposto i cursori per la paginazione se la data arriva con un timezone la converto in UTC
-        datetime_from_filter = parse_datetime(request.args.get('datetime_from_filter')) if request.args.get('datetime_from_filter') else MIN_RESERVATION_DATETIME
-        datetime_to_filter = parse_datetime(request.args.get('datetime_to_filter')) if request.args.get('datetime_to_filter') else first_day_of_next_month(datetime_from_filter)
+        datetime_from_filter = request.args.get('datetime_from_filter', default=MIN_RESERVATION_DATETIME, type=parse_datetime)
+        datetime_to_filter = request.args.get('datetime_to_filter', default=None, type=parse_datetime)
+        if datetime_to_filter is None:
+            datetime_to_filter = first_day_of_next_month(datetime_from_filter)
+
     except Exception as e:
         current_app.logger.error(e)
         return jsonify({"error": "Invalid data"}), 400

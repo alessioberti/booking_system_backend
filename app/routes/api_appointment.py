@@ -62,9 +62,9 @@ def create_appointment():
         appointment_data = data.get("appointment")
 
         if not validate_data(patient_data):
-            return jsonify({"error": "Invalid data"}), 400
+            return jsonify({"error": "Invalid patient_datata"}), 400
         if not validate_data(appointment_data):
-            return jsonify({"error": "Invalid data"}), 400
+            return jsonify({"error": "Invalid appointment_data"}), 400
         
         # crea un nuovo appuntamento
         appointment = Appointment(
@@ -98,6 +98,60 @@ def get_appointment(appointment_id):
     if appointment:
         return jsonify(appointment.to_dict())
     return jsonify({"error": "Appointment not found"}), 404
+
+# sostituisce un appuntamento con un altro
+@bp.route('/api/v1/appointments/<appointment_id>/replace', methods=['PUT'])
+@jwt_required()
+def replace_appointment(appointment_id):
+    
+    current_user = get_jwt_identity()
+    data = request.get_json()
+    patient_data = data.get("patient")
+    appointment_data = data.get("appointment")
+    
+    if not validate_data(patient_data):
+        return jsonify({"error": "Invalid patient_data"}), 400
+    if not validate_data(appointment_data):
+        return jsonify({"error": "Invalid appointment_data"}), 400
+
+    # recupera l'appuntamento e verifica che l'account associato sia l'utente corrente
+    appointment = Appointment.query.filter_by(appointment_id=UUID(appointment_id), account_id=current_user).first()
+    if not appointment:
+        current_app.logger.error("Appointment %s not found for current user %s", appointment_id, current_user)
+        return jsonify({"error": "Appointment not found"}), 404
+
+    try:
+
+         # crea un nuovo appuntamento
+        new_appointment = Appointment(
+            availability_id = appointment_data.get("availability_id"),
+            appointment_date = appointment_data.get("appointment_date"),
+            appointment_time_start = appointment_data.get("appointment_time_start"),
+            appointment_time_end = appointment_data.get("appointment_time_end"),
+            info = appointment_data.get("info"),
+            account_id = current_user
+        )
+
+        # usa il metodo create_new per creare un nuovo paziente e associarlo all'appuntamento
+        new_appointment.create_new(
+            patient_first_name = patient_data.get("first_name"),
+            patient_last_name = patient_data.get("last_name"),
+            patient_email = patient_data.get("email"),
+            patient_tel_number = patient_data.get("tel_number"),
+            patient_fiscal_code = patient_data.get("fiscal_code"),
+            patient_birth_date = patient_data.get("birth_date"),
+            patient_is_default = patient_data.get("is_default")
+        )
+
+        # sostituisci l'appuntamento con il nuovo appuntamento
+        db.session.delete(appointment)
+        db.session.commit()
+        return jsonify("Appointment replaced"), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(e)
+        return jsonify({"error": "Invalid data"}), 400
 
 # cancella un appuntamento
 @bp.route('/api/v1/appointments/<appointment_id>/reject', methods=['PUT'])
@@ -162,7 +216,7 @@ def edit_appointment_patient(appointment_id):
  
     patient_data = data.get("patient")
     if not validate_data(patient_data):
-        return jsonify({"error": "Invalid data"}), 400
+        return jsonify({"error": "Invalid patient_data"}), 400
 
     # recupera l'appuntamento e verifica che l'account associato sia l'utente corrente
     appointment = Appointment.query.filter_by(appointment_id=UUID(appointment_id), account_id=current_user).first()
@@ -196,7 +250,7 @@ def replace_appointment_patient(appointment_id):
     data = request.get_json()
     patient_data = data.get("patient")
     if not validate_data(patient_data):
-        return jsonify({"error": "Invalid data"}), 400
+        return jsonify({"error": "Invalid patient_data"}), 400
 
     # recupera l'appuntamento e verifica che l'account associato sia l'utente corrente
     appointment = Appointment.query.filter_by(appointment_id=UUID(appointment_id), account_id=current_user).first()
