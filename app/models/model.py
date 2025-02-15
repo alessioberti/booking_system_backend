@@ -52,6 +52,31 @@ class Account(db.Model):
             "account_id": self.account_id,
             "username": self.username,
         }
+    
+     # anonimizza tutti i pazienti collegati all'account mantenendo solo l'id e dati per scopi statistici
+    def anonimize(self):
+        account_patients = Patient.query.filter_by(account_id=self.account_id).all()
+        for patient in account_patients:
+            patient.first_name = uuid.uuid4().hex
+            patient.last_name = uuid.uuid4().hex
+            patient.email = uuid.uuid4().hex
+            patient.tel_number = None
+            # anonimizza il codice fiscale se è lungo 16 caratteri altrimenti se è stato inserito un codice fiscale errato o un documento lo elimina
+            if patient.fiscal_code and len(patient.fiscal_code) == 16:
+                patient.fiscal_code = "XXXXXX" + patient.fiscal_code[6:]
+            else:
+                patient.fiscal_code = None
+            patient.anonimized = True
+
+        # anonimizza gli appuntamenti collegati all'account
+        account_appointments = Appointment.query.filter_by(account_id=self.account_id).all()
+        for appointment in account_appointments:
+            appointment.info = None
+
+        # anonimizza l'account
+        self.enabled = False
+        self.username = uuid.uuid4().hex
+        self.password_hash = uuid.uuid4().hex
    
 class Patient(db.Model):
     __tablename__ = "patient"
@@ -59,11 +84,11 @@ class Patient(db.Model):
     patient_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
     account_id = db.Column(UUID(as_uuid=True), db.ForeignKey("account.account_id"), nullable=False)
     is_default = db.Column(db.Boolean, default=False, nullable=False)
-    first_name = db.Column(db.String(30), nullable=False)
-    last_name = db.Column(db.String(30), nullable=False)
+    first_name = db.Column(db.String(32), nullable=False)
+    last_name = db.Column(db.String(32), nullable=False)
     email = db.Column(db.String(254), nullable=False)
-    tel_number = db.Column(db.String(30) , nullable=True)
-    fiscal_code = db.Column(db.String(30) , nullable=True)
+    tel_number = db.Column(db.String(32) , nullable=True)
+    fiscal_code = db.Column(db.String(32) , nullable=True)
     birth_date = db.Column(db.Date , nullable=True)
     anonimized = db.Column(db.Boolean, default=False, nullable=False)
 

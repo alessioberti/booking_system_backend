@@ -1,4 +1,4 @@
-from app.models.model import Patient, Account 
+from app.models.model import Patient, Account, Appointment
 from flask import jsonify, make_response, request 
 from app.routes import bp
 from app import db
@@ -7,8 +7,9 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime, timedelta
 from flask_jwt_extended import create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies, get_jwt
 from flask import current_app
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from app.functions.validate_form_data import validate_data
+from sqlalchemy import or_, and_
 
 # Restituisce l'account dell'utente corrente utilizzato per il refresh del token JWT
 @bp.route('/api/v1/account', methods=['GET'])
@@ -105,7 +106,7 @@ def login():
         access_token = create_access_token(identity=account.account_id)
         resp = make_response(account.to_dict())
         set_access_cookies(resp, access_token)
-        return resp
+        return resp, 200
     
     else:
         # in caso di password errata incrementa i tentativi falliti
@@ -118,7 +119,7 @@ def login():
 def logout():
     resp = make_response({"message": "Logged out"})
     unset_jwt_cookies(resp)
-    return resp
+    return resp, 200
 
 @bp.route('/api/v1/account/password', methods=['PUT'])
 @jwt_required()
@@ -170,3 +171,47 @@ def update_default_patient():
     patient.birth_date = data["birth_date"]
     db.session.commit()
     return jsonify({"message": "Patient updated"}), 200
+
+@bp.route('/api/v1/account/delete', methods=['POST'])
+@jwt_required()
+def anonimize_account():
+
+    current_user = get_jwt_identity()
+    data = request.json
+    if not data:
+        return jsonify({"error": "Missing data"}), 400
+    
+    # verifica la password dell'utente
+    account = Account.query.get(current_user)
+    if account.is_admin:
+        return jsonify({"error": "Admin account cannot be deleted"}), 403
+
+    if (not account) or (not (check_password_hash(account.password_hash, data["password"]))):
+        return jsonify({"error": "Wrong account or password"}), 401
+
+    
+    # verifica se ci sono appuntamenti futuri attivi
+    today = datetime.now() 
+    appointments_query =  Appointment.query.filter(
+            or_(
+                Appointment.appointment_date > today.date(),
+                and_(Appointment.appointment_time_start == today.time(),Appointment.appointment_time_start >= today.time())
+            )
+        ).filter_by(account_id=current_user).filter_by(rejected="false")
+    
+    if appointments_query.first() is not None:
+        return jsonify({"error": "Can't delete account with future appointments"}), 409
+
+    # cancella l'account e anonimizza i dati dei pazienti collegati
+
+    try:
+        account.anonimize()
+        db.session.commit()
+    except Exception as e:
+        current_app.logger.error(e)
+        db.session.rollback()
+        return jsonify({"error": "Error in account delete"}), 500
+
+    resp = make_response({"message": "Account deleted"})
+    unset_jwt_cookies(resp)
+    return resp, 200
