@@ -1,15 +1,13 @@
 from app.models.model import Patient, Account, Appointment
-from flask import jsonify, make_response, request 
+from flask import jsonify, make_response, request , current_app
 from app.routes import bp
-from app import db
-import re
+from app import db, mail
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime, timedelta
-from flask_jwt_extended import create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies, get_jwt
-from flask import current_app
-from datetime import datetime, timedelta
+from flask_jwt_extended import decode_token, create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies, get_jwt
 from app.functions.validate_form_data import validate_data
 from sqlalchemy import or_, and_
+from flask_mail import Message
 
 # Restituisce l'account dell'utente corrente utilizzato per il refresh del token JWT
 @bp.route('/api/v1/account', methods=['GET'])
@@ -38,50 +36,16 @@ def get_patient_default():
             return jsonify({"error": "Patient not found"}), 404
         return jsonify(patient.to_dict()), 200
 
-# crea un nuovo account e paziente di default
-@bp.route('/api/v1/register', methods=['POST'])
-def register():
-
-        data = request.json
-
-        if not validate_data(data):
-            return jsonify({"error": "Missing or Invalid data"}), 400
-      
-        # verifica se l'email è già in uso altrimenti restituisce un errore 422 
-        existing_account = Account.query.filter_by(username=data.get("username")).first()
-        existing_email = Patient.query.filter_by(email=data.get("email"),is_default = True ).first()
-
-        if existing_account:
-            return jsonify({"error": "username_already_exists"}), 422
-        if existing_email:
-            return jsonify({"error": "email_already_exists"}), 422
-
-        account = Account(
-            username=data.get("username"),
-            password_hash=generate_password_hash(data.get("password"))
-        )
-
-        account.create_new(
-            email=data.get("email"),
-            first_name=data.get("first_name"),
-            last_name=data.get("last_name"),
-            tel_number=data.get("tel_number"),
-            fiscal_code=data.get("fiscal_code"),
-            birth_date=data.get("birth_date")
-        )
-        db.session.commit()
-        return jsonify({"message": "Account created"}), 200
-
 @bp.route('/api/v1/login', methods=['POST'])
 def login():
     data = request.json
-    if not data:
-        return jsonify({"error": "Missing data"}), 400
+    if not validate_data(data):
+        return jsonify({"error": "Missing or invalid data"}), 400
 
     # prova a recuperare l'account con username o email
-    account = Account.query.filter_by(username=data["username"]).first()
+    account = Account.query.filter_by(username=data.get("username")).first()
     if not account:
-        account = Account.query.join(Patient).filter_by(email=data["username"], is_default=True).first()
+        account = Account.query.join(Patient).filter_by(email=data.get("username"), is_default=True).first()
 
     if not account:
         # per sicurezza non viene comunicato se l'account esiste o meno
@@ -215,3 +179,90 @@ def anonimize_account():
     resp = make_response({"message": "Account deleted"})
     unset_jwt_cookies(resp)
     return resp, 200
+
+@bp.route("/api/v1/forgot", methods=["POST"])
+def request_password_reset():
+    
+    data = request.get_json()
+    
+    if not validate_data(data):
+        return jsonify({"message": "Missing or Invalid data"}), 400
+    
+    # cerca l'account con username o email
+    # prova a recuperare l'account con username o email
+    account = Account.query.filter_by(username=data.get("username")).first()
+    if not account:
+        account = Account.query.join(Patient).filter_by(email=data.get("username"), is_default=True).first()
+    if not account:
+        return jsonify({"message": "Account not found"}), 404
+
+    email = Patient.query.filter_by(account_id=account.account_id, is_default=True).first().email
+
+    # crea un token valido e crea un link per reimpostare la password
+    access_token = create_access_token(identity=account.account_id)
+    reset_url = f"{current_app.config['FRONTEND_URL']}/reset-password?token={access_token}"
+    
+    # Invia email all'utente con il link per reimpostare la password
+    # in questa implemntazione non è stato impostato un template HTML per l'email
+    subject = "Prenotazioni Centro Medico: Reimposta Password"
+    body = "Usa il seguente link per reimpostare la tua password"
+
+    msg = Message(subject,
+                recipients=[email])
+    msg.body = f"{body}: {reset_url}"
+    mail.send(msg)
+    
+    return jsonify({"message": "reset link sent"}), 200
+
+@bp.route("/api/v1/validate", methods=["POST"])
+@jwt_required()
+def reset_password():
+    
+    current_user = get_jwt_identity()
+    data = request.get_json()
+
+    if not validate_data(data):
+        return jsonify({"message": "Missing or Invalid data"}), 400
+
+    account = Account.query.get(current_user)
+    if not account:
+        return jsonify({"message": "Utente non trovato"}), 404
+    
+    account.password_hash = generate_password_hash(data.get("password"))
+    db.session.commit()
+
+    return jsonify({"message": "Password aggiornata con successo"}), 200
+
+# crea un nuovo account e paziente di default
+@bp.route('/api/v1/register', methods=['POST'])
+def register():
+
+        data = request.json
+
+        if not validate_data(data):
+            return jsonify({"error": "Missing or Invalid data"}), 400
+      
+        # verifica se l'email è già in uso altrimenti restituisce un errore 422 
+        existing_account = Account.query.filter_by(username=data.get("username")).first()
+        existing_email = Patient.query.filter_by(email=data.get("email"),is_default = True ).first()
+
+        if existing_account:
+            return jsonify({"error": "username_already_exists"}), 422
+        if existing_email:
+            return jsonify({"error": "email_already_exists"}), 422
+
+        account = Account(
+            username=data.get("username"),
+            password_hash=generate_password_hash(data.get("password"))
+        )
+
+        account.create_new(
+            email=data.get("email"),
+            first_name=data.get("first_name"),
+            last_name=data.get("last_name"),
+            tel_number=data.get("tel_number"),
+            fiscal_code=data.get("fiscal_code"),
+            birth_date=data.get("birth_date")
+        )
+        db.session.commit()
+        return jsonify({"message": "Account created"}), 200

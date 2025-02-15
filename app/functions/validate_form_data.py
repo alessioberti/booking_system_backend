@@ -12,7 +12,7 @@ regex_rules = {
     "fiscal_code": r'[a-zA-Z0-9]{3,32}$',
     "first_name": r"^[A-Za-zÀ-ÖØ-öø-ÿ ,.'-]+$",
     "last_name": r"^[A-Za-zÀ-ÖØ-öø-ÿ ,.'-]+$",
-    "username": r'^[A-Za-z0-9]{3,32}$'
+    "username": r'^[A-Za-z0-9@.]{3,32}$'
 }
 # campi che richiedono la validazione della data
 validate_date_fields = ["birth_date", "appointment_date"]

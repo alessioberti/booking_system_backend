@@ -2,7 +2,7 @@ from flask import Flask
 from flask_jwt_extended import get_jwt, create_access_token, get_jwt_identity, set_access_cookies
 from datetime import datetime, timezone, timedelta
 from app.config import Config
-from app.extensions import db, jwt
+from app.extensions import db, jwt, mail
 from flask_cors import CORS
 from app.models import Account
 from werkzeug.security import generate_password_hash
@@ -15,6 +15,7 @@ def create_app(config_class=Config):
     # Inizializzazione delle estensioni
     db.init_app(app)
     jwt.init_app(app)
+    mail.init_app(app)
 
     # Configurazione CORS - abilita solo il frontend
     FRONTEND_URL = app.config['FRONTEND_URL']

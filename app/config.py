@@ -9,8 +9,8 @@ if os.path.exists(env_path):
 
 class Config:
     LOG_LEVEL = "INFO"
-    ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL")
-    ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME")
+    ADMIN_EMAIL = "alessioberti@gmail.com"
+    ADMIN_USERNAME = "admin"
     ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
     SECRET_KEY = os.environ.get('SECRET_KEY')
     POSTGRES_USER = os.environ.get("POSTGRES_USER")
@@ -24,7 +24,7 @@ class Config:
     JWT_ALGORITHM = 'HS256'
     JWT_ACCESS_TOKEN_EXPIRES = 3600
     JWT_REFRESH_TOKEN_EXPIRES = 604800
-    JWT_TOKEN_LOCATION = 'cookies'
+    JWT_TOKEN_LOCATION = ["headers", "cookies"]
     JWT_COOKIE_SECURE = True
     JWT_COOKIE_CSRF_PROTECT = True
     JWT_COOKIE_SECURE = True
@@ -32,5 +32,13 @@ class Config:
     JWT_REFRESH_THRESHOLD_MINUTES = 30
     DEMO_DATA = True
     TEST_DATA = True
-    FRONTEND_URL = os.environ.get("FRONTEND_URL")
+    FRONTEND_URL = "https://localhost:5173"
+    MAIL_SERVER = "localhost"
+    MAIL_PORT = 1025
+    MAIL_USE_TLS = False
+    MAIL_USE_SSL = False
+    MAIL_USERNAME = None
+    MAIL_PASSWORD =  None
+    MAIL_DEFAULT_SENDER = "noreply@localhost"
+
   
