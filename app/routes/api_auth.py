@@ -8,6 +8,8 @@ from flask_jwt_extended import decode_token, create_access_token, set_access_coo
 from app.functions.validate_form_data import validate_data
 from sqlalchemy import or_, and_
 from flask_mail import Message
+from uuid import uuid4
+from app.functions.send_mail import send_access_token
 
 # Restituisce l'account dell'utente corrente utilizzato per il refresh del token JWT
 @bp.route('/api/v1/account', methods=['GET'])
@@ -114,7 +116,7 @@ def change_user():
     db.session.commit()
     return jsonify({"message": "Username changed"}), 200
 
-@bp.route('/api/v1/account/patient/info', methods=['PUT'])
+@bp.route('/api/v1/account/patient/update', methods=['PUT'])
 @jwt_required()
 def update_default_patient():
     current_user = get_jwt_identity()
@@ -199,18 +201,7 @@ def request_password_reset():
     email = Patient.query.filter_by(account_id=account.account_id, is_default=True).first().email
 
     # crea un token valido e crea un link per reimpostare la password
-    access_token = create_access_token(identity=account.account_id)
-    reset_url = f"{current_app.config['FRONTEND_URL']}/reset-password?token={access_token}"
-    
-    # Invia email all'utente con il link per reimpostare la password
-    # in questa implemntazione non è stato impostato un template HTML per l'email
-    subject = "Prenotazioni Centro Medico: Reimposta Password"
-    body = "Usa il seguente link per reimpostare la tua password"
-
-    msg = Message(subject,
-                recipients=[email])
-    msg.body = f"{body}: {reset_url}"
-    mail.send(msg)
+    send_access_token(email, account)
     
     return jsonify({"message": "reset link sent"}), 200
 
@@ -250,19 +241,29 @@ def register():
             return jsonify({"error": "username_already_exists"}), 422
         if existing_email:
             return jsonify({"error": "email_already_exists"}), 422
+        try:
 
-        account = Account(
-            username=data.get("username"),
-            password_hash=generate_password_hash(data.get("password"))
-        )
+            # crea un nuovo account con una password casuale
+            account = Account(
+                username=data.get("username"),
+                password_hash=generate_password_hash(uuid4().hex),
+            )
 
-        account.create_new(
-            email=data.get("email"),
-            first_name=data.get("first_name"),
-            last_name=data.get("last_name"),
-            tel_number=data.get("tel_number"),
-            fiscal_code=data.get("fiscal_code"),
-            birth_date=data.get("birth_date")
-        )
-        db.session.commit()
+            account.create_new(
+                email=data.get("email"),
+                first_name=data.get("first_name"),
+                last_name=data.get("last_name"),
+                tel_number=data.get("tel_number"),
+                fiscal_code=data.get("fiscal_code"),
+                birth_date=data.get("birth_date")
+            )
+            db.session.commit()
+
+            send_access_token(data.get("email"), account)
+
+        except Exception as e:
+            current_app.logger.error(e)
+            db.session.rollback()
+            return jsonify({"error": "Error creating account or patient"}), 500
+                            
         return jsonify({"message": "Account created"}), 200

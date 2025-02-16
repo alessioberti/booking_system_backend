@@ -2,15 +2,15 @@ import os
 from dotenv import load_dotenv
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-# SOLO PER SVILUPPO LOCALE IN PRODUZIONE USARE VARIABILI D'AMBIENTE
+# .env per lo sviluppo locale in produzione le variabili d'ambiente sono impostate nel server
 env_path = os.path.join(basedir, '../.env')
 if os.path.exists(env_path):
     load_dotenv(env_path)
 
 class Config:
     LOG_LEVEL = "INFO"
-    ADMIN_EMAIL = "alessioberti@gmail.com"
-    ADMIN_USERNAME = "admin"
+    ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL")
+    ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME")
     ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
     SECRET_KEY = os.environ.get('SECRET_KEY')
     POSTGRES_USER = os.environ.get("POSTGRES_USER")
