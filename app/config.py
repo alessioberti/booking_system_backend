@@ -23,7 +23,6 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY")
     JWT_ALGORITHM = 'HS256'
     JWT_ACCESS_TOKEN_EXPIRES = 3600
-    JWT_REFRESH_TOKEN_EXPIRES = 604800
     JWT_TOKEN_LOCATION = ["headers", "cookies"]
     JWT_COOKIE_SECURE = True
     JWT_COOKIE_CSRF_PROTECT = True

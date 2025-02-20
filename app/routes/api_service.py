@@ -8,7 +8,6 @@ from app.routes import bp
 from flask import current_app
 from flask_jwt_extended import jwt_required
 
-
 # funzioni per ottenere il primo giorno del mese successivo e del mese precedente
 # le date sono impostate a mezzanotte per forzare un limite inclusivo per la data di inizio e esclusivo per la data di fine
 def first_day_of_next_month(dt: datetime) -> datetime:

@@ -9,6 +9,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.functions.validate_form_data import validate_data
 from datetime import datetime
 from sqlalchemy import or_, and_
+from app.functions.send_mail import send_appointment_confirmation, send_appointment_cancellation
 
 # restituisce tutti gli appuntamenti associati all'utente corrente
 @bp.route('/api/v1/appointments', methods=['GET'])
@@ -56,6 +57,7 @@ def get_appointments():
 @jwt_required()
 def create_appointment():
 
+    try:
         current_user = get_jwt_identity()
         data = request.get_json()
         patient_data = data.get("patient")    
@@ -87,8 +89,15 @@ def create_appointment():
             patient_is_default = patient_data.get("is_default")
         )
         db.session.commit()
-
+        patient_full_name = f"{appointment.patient.first_name} {appointment.patient.last_name}"
+        service_name = appointment.availability.service.name
+        send_appointment_confirmation(appointment.patient.email, service_name, patient_full_name, appointment)
         return jsonify({"success": "Appointment created"}), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(e)
+        return jsonify({"error": "Invalid data"}), 400
 
 # restituisce i dati di un appuntamento
 @bp.route('/api/v1/appointments/<appointment_id>', methods=['GET'])
@@ -121,7 +130,6 @@ def replace_appointment(appointment_id):
         return jsonify({"error": "Appointment not found"}), 404
 
     try:
-
          # crea un nuovo appuntamento
         new_appointment = Appointment(
             availability_id = appointment_data.get("availability_id"),
@@ -144,6 +152,12 @@ def replace_appointment(appointment_id):
         )
 
         # sostituisci l'appuntamento con il nuovo appuntamento
+        
+        db.session.commit()
+        patient_full_name = f"{new_appointment.patient.first_name} {new_appointment.patient.last_name}"
+        service_name = new_appointment.availability.service.name
+        send_appointment_cancellation(appointment.patient.email, service_name,  patient_full_name, appointment)
+        send_appointment_confirmation(new_appointment.patient.email, service_name, patient_full_name, new_appointment)
         db.session.delete(appointment)
         db.session.commit()
         return jsonify("Appointment replaced"), 200
@@ -162,7 +176,11 @@ def reject_appointment(appointment_id):
         appointment = Appointment.query.get(UUID(appointment_id))
         appointment.rejected = True
         db.session.commit()
-        return jsonify(appointment.to_dict()), 200
+        patient_full_name = f"{appointment.patient.first_name} {appointment.patient.last_name}"
+        service_name = appointment.availability.service.name
+        send_appointment_cancellation(appointment.patient.email, service_name, patient_full_name, appointment)
+        return jsonify("Appointment rejected"), 200
+    
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(e)

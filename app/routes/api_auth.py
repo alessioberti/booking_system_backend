@@ -1,13 +1,12 @@
 from app.models.model import Patient, Account, Appointment
 from flask import jsonify, make_response, request , current_app
 from app.routes import bp
-from app import db, mail
+from app import db
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime, timedelta
-from flask_jwt_extended import decode_token, create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies, get_jwt
+from flask_jwt_extended import create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies, get_jwt
 from app.functions.validate_form_data import validate_data
 from sqlalchemy import or_, and_
-from flask_mail import Message
 from uuid import uuid4
 from app.functions.send_mail import send_access_token
 
@@ -124,19 +123,23 @@ def update_default_patient():
    
     if not validate_data(data):
         return jsonify({"error": "Missing or Invalid data"}), 400
-
-    account = Account.query.get(current_user)
-    patient = Patient.query.filter_by(account_id=account.account_id, is_default=True).first()
-    if not patient:
-        return jsonify({"error": "Patient not found"}), 404
-    patient.first_name = data["first_name"]
-    patient.last_name = data["last_name"]
-    patient.email = data["email"]
-    patient.tel_number = data["tel_number"]
-    patient.fiscal_code = data["fiscal_code"]
-    patient.birth_date = data["birth_date"]
-    db.session.commit()
-    return jsonify({"message": "Patient updated"}), 200
+    try:
+        account = Account.query.get(current_user)
+        patient = Patient.query.filter_by(account_id=account.account_id, is_default=True).first()
+        if not patient:
+            return jsonify({"error": "Patient not found"}), 404
+        patient.first_name = data["first_name"]
+        patient.last_name = data["last_name"]
+        patient.email = data["email"]
+        patient.tel_number = data["tel_number"]
+        patient.fiscal_code = data["fiscal_code"]
+        patient.birth_date = data["birth_date"]
+        db.session.commit()
+        return jsonify({"message": "Patient updated"}), 200
+    except Exception as e:
+        current_app.logger.error(e)
+        db.session.rollback()
+        return jsonify({"error": "Error updating patient"}), 500
 
 @bp.route('/api/v1/account/delete', methods=['POST'])
 @jwt_required()
@@ -215,14 +218,21 @@ def reset_password():
     if not validate_data(data):
         return jsonify({"message": "Missing or Invalid data"}), 400
 
-    account = Account.query.get(current_user)
-    if not account:
-        return jsonify({"message": "Utente non trovato"}), 404
-    
-    account.password_hash = generate_password_hash(data.get("password"))
-    db.session.commit()
+    try:
+        account = Account.query.get(current_user)
+        if not account:
+            return jsonify({"message": "User found"}), 404
+        # imposta la nuova password
+        account.password_hash = generate_password_hash(data.get("password"))
+        # abilita l'account
+        account.enabled = True
+        db.session.commit()
 
-    return jsonify({"message": "Password aggiornata con successo"}), 200
+        return jsonify({"message": "Validation Success"}), 200
+    except Exception as e:
+        current_app.logger.error(e)
+        db.session.rollback()
+        return jsonify({"error": "Error in validation"}), 500
 
 # crea un nuovo account e paziente di default
 @bp.route('/api/v1/register', methods=['POST'])
@@ -237,6 +247,7 @@ def register():
         existing_account = Account.query.filter_by(username=data.get("username")).first()
         existing_email = Patient.query.filter_by(email=data.get("email"),is_default = True ).first()
 
+        # usa di errore stringhe per intercettare eventuali errori in frontend 
         if existing_account:
             return jsonify({"error": "username_already_exists"}), 422
         if existing_email:
@@ -247,6 +258,7 @@ def register():
             account = Account(
                 username=data.get("username"),
                 password_hash=generate_password_hash(uuid4().hex),
+                enabled=False
             )
 
             account.create_new(
